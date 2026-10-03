@@ -3,7 +3,26 @@ import { HAS_SERVER } from '../lib/env.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 
 // Grown-ups only: build the curated song list from YouTube search, a playlist, or a pasted link.
-export default function LibraryAdmin({ library, save }) {
+function SignIn({ auth }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [msg, setMsg] = useState('')
+  const submit = async (e) => {
+    e.preventDefault()
+    setMsg(await auth.signIn(email, password))
+  }
+  return (
+    <form onSubmit={submit} className="space-y-2">
+      <p className="text-sm text-slate-600">Sign in to change the song library. (Everyone can still pick songs.)</p>
+      <input className="field" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
+      <input className="field" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+      {msg && <p className="text-rose-600 text-sm">{msg}</p>}
+      <button className="big-btn !py-2 w-full bg-violet-600 text-white">Sign in</button>
+    </form>
+  )
+}
+
+export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = true, dbError, seed }) {
   const [enabled, setEnabled] = useState(null) // is a YouTube API key configured?
   const [mode, setMode] = useState(HAS_SERVER ? 'search' : 'link')
   const [query, setQuery] = useState('kidz bop karaoke')
@@ -71,14 +90,34 @@ export default function LibraryAdmin({ library, save }) {
     <button className={`big-btn !py-2 !text-base ${mode === id ? 'bg-violet-600 text-white' : 'bg-violet-100'}`} onClick={() => { setMode(id); setError('') }}>{label}</button>
   )
 
+  if (!canEdit) {
+    return (
+      <section className="card space-y-3">
+        <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
+        {dbError && <p className="text-amber-700 text-sm">{dbError}</p>}
+        <SignIn auth={auth} />
+      </section>
+    )
+  }
+
   return (
     <section className="card space-y-3">
       <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
+      {usingDb && (
+        <p className="text-sm text-slate-600">
+          Saved to the shared song database ✅{auth?.session?.user?.email ? ` · ${auth.session.user.email} · ` : ' · '}
+          <button className="underline" onClick={auth.signOut}>sign out</button>
+        </p>
+      )}
+      {dbError && <p className="text-amber-700 text-sm">{dbError}</p>}
+      {usingDb && library.length === 0 && seed && (
+        <button className="big-btn !py-2 w-full bg-green-500 text-white" onClick={seed}>Copy the starter songs into the database</button>
+      )}
 
       {HAS_SERVER ? (
         <div className="flex gap-2">{tab('search', 'YouTube search')}{tab('playlist', 'Playlist')}{tab('link', 'Paste link')}</div>
       ) : (
-        <p className="text-sm text-slate-600">On this public page, songs you add are saved in this browser only. (YouTube search/import and sharing the list need the laptop version.)</p>
+        !usingDb && <p className="text-sm text-slate-600">On this public page, songs you add are saved in this browser only. (YouTube search/import and sharing the list need the laptop version.)</p>
       )}
 
       {mode !== 'link' && enabled === false && (

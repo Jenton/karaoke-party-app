@@ -22,7 +22,28 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the Grown-ups panel, then `git add public/library.json`, commit and push.
 
-The library ships with 7 KIDZ BOP karaoke videos found via web search (not yet checked for embedding), so the picker isn't empty; import the full playlist for more.
+Without the database, the library ships with 7 KIDZ BOP karaoke videos found via web search (not yet checked for embedding), so the picker isn't empty; import the full playlist for more.
+
+## Shared song database (Supabase): same list at any location
+
+By default the song list is a file (`public/library.json`). To have songs you add in the app saved to a database, so the
+public page shows the same list on any laptop at any location with no git push, set up a free Supabase project once:
+
+1. Create an account and a new project at https://supabase.com (free plan is plenty).
+2. **SQL Editor → New query**: paste the contents of `supabase/schema.sql` and **Run**. This creates the `songs` table:
+   everyone can read it, only a signed-in user can change it.
+3. **Authentication → Providers → Email**: turn **off** "Allow new users to sign up" (so strangers can't make accounts), then
+   **Authentication → Users → Add user** and create yourself an email + password (tick "Auto Confirm User").
+4. **Project Settings → API**: copy the **Project URL** and the **anon public** key.
+5. Locally: put them in `.env` as `VITE_SUPABASE_URL=` and `VITE_SUPABASE_ANON_KEY=` and restart `npm run dev`.
+   For the public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** tab → add repository variables
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
+6. Open the app → 🔧 Grown-ups, sign in with the user from step 3, and click **Copy the starter songs into the database** (first time only).
+
+After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
+Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the
+Wi-Fi drops at the party the app still shows your songs. The queue itself still lives on the screen's laptop only.
+Do **not** put your YouTube API key or the Supabase "service_role" key in the public variables.
 
 ## Before the party: build the song list (grown-ups)
 

@@ -9,6 +9,7 @@ import SongPicker from './components/SongPicker.jsx'
 import LibraryAdmin from './components/LibraryAdmin.jsx'
 import { HAS_SERVER } from './lib/env.js'
 import { useLibrary } from './hooks/useLibrary.js'
+import { useAuth } from './hooks/useAuth.js'
 import RemoteView from './components/RemoteView.jsx'
 
 const isRemote = new URLSearchParams(location.search).has('remote')
@@ -18,7 +19,9 @@ export default function App() {
   const [started, setStarted] = useState(false)
   const [admin, setAdmin] = useState(false)
   const [picking, setPicking] = useState(false)
-  const { library, save: saveLibrary, reload } = useLibrary()
+  const { library, save: saveLibrary, reload, error: libraryError, seed, usingDb } = useLibrary()
+  const auth = useAuth()
+  const canEdit = !usingDb || !!auth.session
   const [autoNext, setAutoNext] = useState(true)
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
@@ -119,8 +122,8 @@ export default function App() {
         <aside className="space-y-4">
           <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} />
           <PitchControls semitones={semitones} onChange={setSemitones} />
-          {admin && <LibraryAdmin library={library} save={saveLibrary} />}
-          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={(s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />}
+          {admin && <LibraryAdmin library={library} save={saveLibrary} auth={auth} usingDb={usingDb} canEdit={canEdit} dbError={libraryError} seed={seed} />}
+          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={!canEdit ? undefined : (s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />}
           {admin && phoneUrl && (
             <div className="card text-center">
               <p className="font-bold text-violet-700">📱 Add songs from a phone</p>
