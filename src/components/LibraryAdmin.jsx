@@ -5,7 +5,7 @@ import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 // Grown-ups only: build the curated song list from YouTube search, a playlist, or a pasted link.
 export default function LibraryAdmin({ library, save }) {
   const [enabled, setEnabled] = useState(null) // is a YouTube API key configured?
-  const [mode, setMode] = useState('search')
+  const [mode, setMode] = useState(HAS_SERVER ? 'search' : 'link')
   const [query, setQuery] = useState('kidz bop karaoke')
   const [playlist, setPlaylist] = useState('https://www.youtube.com/playlist?list=PL5pvzdXbuo274HniZxrytCoUs44IjLUuX') // official KIDZ BOP Karaoke playlist
   const [results, setResults] = useState([])
@@ -18,6 +18,18 @@ export default function LibraryAdmin({ library, save }) {
     if (!HAS_SERVER) return
     fetch('/api/youtube/status').then((r) => r.json()).then((d) => setEnabled(d.enabled)).catch(() => setEnabled(false))
   }, [])
+
+  // fill in the title automatically when a link is pasted (best effort)
+  useEffect(() => {
+    const id = parseYouTubeId(link)
+    if (!id || linkTitle) return
+    let stale = false
+    fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + id)}`)
+      .then((r) => r.json())
+      .then((d) => !stale && d.title && setLinkTitle((t) => t || displayTitle(d.title)))
+      .catch(() => {})
+    return () => { stale = true }
+  }, [link]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const have = new Set(library.map((s) => s.videoId))
   const add = (items) => {
@@ -45,6 +57,7 @@ export default function LibraryAdmin({ library, save }) {
     const videoId = parseYouTubeId(link)
     if (!videoId) return setError("That doesn't look like a YouTube link.")
     if (!linkTitle.trim()) return setError('Give it a title.')
+    if (have.has(videoId)) return setError('That song is already in the library.')
     add([{ videoId, title: linkTitle.trim() }])
     setLink(''); setLinkTitle(''); setError('')
   }
@@ -58,20 +71,15 @@ export default function LibraryAdmin({ library, save }) {
     <button className={`big-btn !py-2 !text-base ${mode === id ? 'bg-violet-600 text-white' : 'bg-violet-100'}`} onClick={() => { setMode(id); setError('') }}>{label}</button>
   )
 
-  if (!HAS_SERVER) {
-    return (
-      <section className="card">
-        <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
-        <p className="mt-2">This public page shows the saved song list. To change it, run the app on your laptop (<code>npm run dev</code>), edit the library, then commit <code>public/library.json</code> and push.</p>
-      </section>
-    )
-  }
-
   return (
     <section className="card space-y-3">
       <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
 
-      <div className="flex gap-2">{tab('search', 'YouTube search')}{tab('playlist', 'Playlist')}{tab('link', 'Paste link')}</div>
+      {HAS_SERVER ? (
+        <div className="flex gap-2">{tab('search', 'YouTube search')}{tab('playlist', 'Playlist')}{tab('link', 'Paste link')}</div>
+      ) : (
+        <p className="text-sm text-slate-600">On this public page, songs you add are saved in this browser only. (YouTube search/import and sharing the list need the laptop version.)</p>
+      )}
 
       {mode !== 'link' && enabled === false && (
         <p className="text-rose-600 text-sm">
@@ -94,7 +102,10 @@ export default function LibraryAdmin({ library, save }) {
       {mode === 'link' && (
         <form className="space-y-2" onSubmit={addLink}>
           <input className="field" placeholder="YouTube link" value={link} onChange={(e) => setLink(e.target.value)} />
-          <input className="field" placeholder="Song title" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
+          {parseYouTubeId(link) && (
+            <img alt="" src={`https://i.ytimg.com/vi/${parseYouTubeId(link)}/mqdefault.jpg`} className="w-40 rounded-lg" />
+          )}
+          <input className="field" placeholder="Song title (filled in automatically if possible)" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
           <button className="big-btn !py-2 w-full bg-pink-500 text-white">Add to library</button>
         </form>
       )}

@@ -120,7 +120,7 @@ export default function App() {
           <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} />
           <PitchControls semitones={semitones} onChange={setSemitones} />
           {admin && <LibraryAdmin library={library} save={saveLibrary} />}
-          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={HAS_SERVER ? (s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s]) : undefined} />}
+          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={(s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />}
           {admin && phoneUrl && (
             <div className="card text-center">
               <p className="font-bold text-violet-700">📱 Add songs from a phone</p>

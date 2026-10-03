@@ -18,9 +18,9 @@ you just add songs by pasting links.
 Every push to `main` is built and published by `.github/workflows/pages.yml` to
 `https://jenton.github.io/karaoke-party-app/` (one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
 
-The public page is static: it shows the song list from `public/library.json`, finds lyrics directly from LRCLIB, and the
+The public page is static: it shows the song list from `public/library.json` plus any songs you add with **Paste link** in 🔧 Grown-ups (those are saved in that browser only), finds lyrics directly from LRCLIB, and the
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
-To update the public song list: build it locally with the Grown-ups panel, then `git add public/library.json`, commit and push.
+To change the list for everyone: build it locally with the Grown-ups panel, then `git add public/library.json`, commit and push.
 
 The library ships with 7 KIDZ BOP karaoke videos found via web search (not yet checked for embedding), so the picker isn't empty; import the full playlist for more.
 
@@ -30,7 +30,7 @@ Click **🔧 Grown-ups** → **Song library**:
 
 - **YouTube search** (defaults to "kidz bop karaoke"): results are limited to embeddable, kid-safe (SafeSearch strict) videos.
 - **Playlist**: paste a playlist link or ID (up to 200 videos). It's pre-filled with the official KIDZ BOP Karaoke playlist, so with an API key, click **Load** then **Add all** to import the whole thing.
-- **Paste link**: add one video with your own title.
+- **Paste link**: add one video; the title is filled in automatically when possible (or type your own), with a thumbnail preview.
 
 Use **＋** per song or **Add all**. Titles are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"); use
 **Manage saved songs** to rename or remove. The list is saved in `public/library.json`, so it's still there next time (commit it if you like).
