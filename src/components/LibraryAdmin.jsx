@@ -35,6 +35,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const [linkTitle, setLinkTitle] = useState('')
   const [linkArtist, setLinkArtist] = useState('')
   const [linkGenre, setLinkGenre] = useState('')
+  const [linkKind, setLinkKind] = useState('official')
 
   useEffect(() => {
     if (!HAS_SERVER) return
@@ -57,7 +58,17 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const add = (items) => {
     const fresh = items
       .filter((i) => !have.has(i.videoId))
-      .map((i) => ({ videoId: i.videoId, title: i.artist !== undefined ? i.title : displayTitle(i.title), ...(i.artist ? { artist: i.artist } : {}), ...(i.genre ? { genre: i.genre } : {}) }))
+      .map((i) => {
+        const title = i.artist !== undefined ? i.title : displayTitle(i.title)
+        const kind = i.kind ?? (/karaoke|instrumental/i.test(i.title) ? 'karaoke' : 'official')
+        return {
+          videoId: i.videoId,
+          title: title.replace(/\s*[([]?(karaoke version|official video|official music video)[)\]]?\s*$/i, '').trim() || title,
+          ...(i.artist ? { artist: i.artist } : {}),
+          genre: i.genre || (kind === 'karaoke' ? 'Karaoke' : undefined),
+          ...(kind === 'karaoke' ? { karaokeId: i.videoId } : { officialId: i.videoId }),
+        }
+      })
     if (fresh.length) save([...library, ...fresh])
   }
 
@@ -82,7 +93,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
     if (!videoId) return setError("That doesn't look like a YouTube link.")
     if (!linkTitle.trim()) return setError('Give it a title.')
     if (have.has(videoId)) return setError('That song is already in the library.')
-    add([{ videoId, title: linkTitle.trim(), artist: linkArtist.trim(), genre: linkGenre }])
+    add([{ videoId, title: linkTitle.trim(), artist: linkArtist.trim(), genre: linkGenre, kind: linkKind }])
     setLink(''); setLinkTitle(''); setLinkArtist(''); setLinkGenre(''); setError('')
   }
 
@@ -148,6 +159,10 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
           )}
           <input className="field" placeholder="Song title (filled in automatically if possible)" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
           <input className="field" placeholder="Artist (optional, helps find lyrics)" value={linkArtist} onChange={(e) => setLinkArtist(e.target.value)} />
+          <select className="field" value={linkKind} onChange={(e) => setLinkKind(e.target.value)} aria-label="Video type">
+            <option value="official">🎬 This is the original / official video</option>
+            <option value="karaoke">🎤 This is a karaoke version</option>
+          </select>
           <select className="field" value={linkGenre} onChange={(e) => setLinkGenre(e.target.value)} aria-label="Category">
             <option value="">Category (optional)</option>
             {GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}

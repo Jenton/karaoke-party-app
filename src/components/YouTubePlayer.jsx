@@ -61,7 +61,7 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
         width: '100%',
         height: '100%',
         videoId: latest.current.videoId || undefined,
-        playerVars: { playsinline: 1, rel: 0, modestbranding: 1, autoplay: latest.current.autoplay ? 1 : 0 },
+        playerVars: { playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin, autoplay: latest.current.autoplay ? 1 : 0 },
         events: {
           onReady: sync,
           onStateChange: (e) => {

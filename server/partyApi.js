@@ -46,6 +46,8 @@ function sanitizeLibrary(list) {
       title: String(s.title || 'Untitled').slice(0, 120),
       ...(s.artist ? { artist: String(s.artist).slice(0, 100) } : {}),
       ...(s.genre ? { genre: String(s.genre).slice(0, 60) } : {}),
+      ...(/^[\w-]{11}$/.test(s.karaokeId) ? { karaokeId: s.karaokeId } : {}),
+      ...(/^[\w-]{11}$/.test(s.officialId) ? { officialId: s.officialId } : {}),
     }))
 }
 
@@ -109,6 +111,16 @@ export function partyApi(env = {}) {
         maxResults: 25, q: q.get('q') || 'kidz bop karaoke',
       })
       return hydrate((found.items || []).map((i) => i.id.videoId))
+    },
+    // which of these videos exist and may be embedded on other sites? -> { id: 'ok' | 'blocked' | 'missing' }
+    'GET /api/youtube/check': async (_req, q) => {
+      const ids = (q.get('ids') || '').split(',').filter((i) => /^[\w-]{11}$/.test(i)).slice(0, 200)
+      const out = Object.fromEntries(ids.map((i) => [i, 'missing']))
+      for (let i = 0; i < ids.length; i += 50) {
+        const json = await yt('videos', { part: 'status', id: ids.slice(i, i + 50).join(','), maxResults: 50 })
+        for (const v of json.items || []) out[v.id] = v.status?.embeddable && v.status?.privacyStatus !== 'private' ? 'ok' : 'blocked'
+      }
+      return out
     },
     'GET /api/youtube/playlist': async (_req, q) => {
       const raw = q.get('id') || ''

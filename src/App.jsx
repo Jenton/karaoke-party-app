@@ -8,7 +8,8 @@ import HoldButton from './components/HoldButton.jsx'
 import SeekBar from './components/SeekBar.jsx'
 import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
-import { RENAMED_STARTERS, RETIRED_STARTERS } from './lib/retired.js'
+import { hasBoth, otherVersion, resolveVersion, versionLabel, versionsOf } from './lib/songs.js'
+import VersionToggle from './components/VersionToggle.jsx'
 import { addSinger, clearSingers } from './lib/singers.js'
 import EditableName from './components/EditableName.jsx'
 import PitchControls from './components/PitchControls.jsx'
@@ -35,40 +36,25 @@ export default function App() {
   const auth = useAuth()
   const canEdit = !usingDb || !!auth.session
 
-  // When signed in, remove retired starter songs (the KIDZ BOP ones) from the database, once per device.
-  useEffect(() => {
-    if (!usingDb || !canEdit || !loaded || libraryError) return
-    const FLAG = 'karaoke-retired-v1'
-    if (localStorage.getItem(FLAG)) return
-    const stale = library.filter((s) => RETIRED_STARTERS.includes(s.videoId))
-    if (!stale.length) return localStorage.setItem(FLAG, '1')
-    saveLibrary(library.filter((s) => !RETIRED_STARTERS.includes(s.videoId))).then((ok) => ok && localStorage.setItem(FLAG, '1'))
-  }, [usingDb, canEdit, loaded, libraryError, library, saveLibrary])
-
-  // When signed in, bring renamed starter songs' titles in the database up to date, once per device.
-  useEffect(() => {
-    if (!usingDb || !canEdit || !loaded || libraryError) return
-    const FLAG = 'karaoke-renamed-v1'
-    if (localStorage.getItem(FLAG)) return
-    const stale = library.filter((s) => RENAMED_STARTERS[s.videoId] && RENAMED_STARTERS[s.videoId] !== s.title)
-    if (!stale.length) return localStorage.setItem(FLAG, '1')
-    saveLibrary(library.map((s) => (RENAMED_STARTERS[s.videoId] ? { ...s, title: RENAMED_STARTERS[s.videoId] } : s))).then((ok) => ok && localStorage.setItem(FLAG, '1'))
-  }, [usingDb, canEdit, loaded, libraryError, library, saveLibrary])
-
-  // When signed in, put starter songs we haven't offered yet into the database for you. We remember which starters
-  // were already offered on this device, so songs you remove don't come back; only genuinely new starters are added.
+  // When signed in, keep the shared database in step with the bundled starter list:
+  //  - first time on this device: replace the whole library with the starter list (the one-off reset);
+  //  - afterwards: add any starter songs we haven't offered yet (songs you removed don't come back).
   useEffect(() => {
     if (!usingDb || !canEdit || !loaded || libraryError || !starters.length) return
-    const SEEN = 'karaoke-starters-seen'
-    let seen = null
-    try { seen = JSON.parse(localStorage.getItem(SEEN)) } catch { /* ignore */ }
-    // devices set up before this list existed already got the first 27 starters
-    if (!seen) seen = localStorage.getItem('karaoke-starters-added') ? starters.slice(0, 27).map((s) => s.videoId) : []
+    const RESET = 'karaoke-library-reset-v2'
+    const SEEN = 'karaoke-starters-seen-v2'
+    const ids = starters.map((s) => s.videoId)
+    const markSeen = () => localStorage.setItem(SEEN, JSON.stringify(ids))
+    if (!localStorage.getItem(RESET)) {
+      saveLibrary(starters).then((ok) => { if (ok) { localStorage.setItem(RESET, '1'); markSeen() } })
+      return
+    }
+    let seen = []
+    try { seen = JSON.parse(localStorage.getItem(SEEN)) || [] } catch { /* ignore */ }
     const fresh = missingStarters.filter((s) => !seen.includes(s.videoId))
-    const done = () => localStorage.setItem(SEEN, JSON.stringify(starters.map((s) => s.videoId)))
-    if (!fresh.length) return done()
-    addSongs(fresh).then((ok) => ok && done())
-  }, [usingDb, canEdit, loaded, libraryError, starters, missingStarters.length, addSongs])
+    if (!fresh.length) return markSeen()
+    addSongs(fresh).then((ok) => ok && markSeen())
+  }, [usingDb, canEdit, loaded, libraryError, starters, missingStarters.length, addSongs, saveLibrary])
   const [autoNext, setAutoNext] = useState(true)
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
@@ -90,9 +76,14 @@ export default function App() {
   const actions = {
     add: (song) =>
       update((s) => (s.current ? { ...s, queue: [...s.queue, song] } : { ...s, current: song })),
-    addFromLibrary: (song, singer = '') => {
+    addFromLibrary: (song, singer = '', pref = 'karaoke') => {
       const position = queue.length + 1 // 1 = next in line
-      actions.add({ id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), videoId: song.videoId, title: song.title, artist: song.artist, singer, lyrics: '' })
+      const { version, videoId } = resolveVersion(song, pref)
+      actions.add({
+        id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()),
+        libId: song.videoId, videoId, version, karaokeId: song.karaokeId, officialId: song.officialId,
+        title: song.title, artist: song.artist, singer, lyrics: '',
+      })
       setPicking(false)
       setToast({
         id: Date.now(),
@@ -104,7 +95,13 @@ export default function App() {
       })
     },
     // add straight from the library with no name; it can be named later in the queue
-    quickAdd: (song) => actions.addFromLibrary(song, ''),
+    quickAdd: (song, pref) => actions.addFromLibrary(song, '', pref),
+    // switch a queued (or the current) song between its karaoke and original video
+    setVersion: (id, version) =>
+      update((s) => {
+        const swap = (q) => (q.id === id ? { ...q, ...resolveVersion({ ...q, videoId: q.libId ?? q.videoId }, version) } : q)
+        return { ...s, current: s.current ? swap(s.current) : s.current, queue: s.queue.map(swap) }
+      }),
     setSinger: (id, name) => {
       if (name) addSinger(name)
       update((s) => ({
@@ -176,6 +173,15 @@ export default function App() {
 
   // the video can't be seen in visualizer mode, so say so (and move on) when YouTube refuses to play it
   const onPlayerError = (code) => {
+    // if this song has another video (karaoke <-> original), switch to it before giving up
+    if (current && hasBoth(current) && !current.triedAlt) {
+      const active = current.videoId === current.karaokeId ? 'karaoke' : 'official'
+      const next = otherVersion(active)
+      const alt = next === 'karaoke' ? current.karaokeId : current.officialId
+      update((s) => (s.current ? { ...s, current: { ...s.current, videoId: alt, version: next, triedAlt: true } } : s))
+      setToast({ id: Date.now(), text: `⚠️ The ${active === 'karaoke' ? 'karaoke' : 'original'} video can't be played here, so we switched to the ${next === 'karaoke' ? 'karaoke' : 'original'} one` })
+      return
+    }
     setPlayerError(code ?? -1)
     // move on automatically if someone is waiting; otherwise stay put so the message isn't missed
     if (queue.length) setTimeout(() => { setPlayerError(null); actions.next() }, 3500)
@@ -337,6 +343,9 @@ export default function App() {
             <p className="text-xl sm:text-2xl lg:text-4xl font-bold truncate">{current ? current.title : 'Waiting for a singer…'}</p>
             {current && <p className="text-base sm:text-lg lg:text-2xl text-pink-600 font-semibold">🎤 <EditableName value={current.singer} onSave={(n) => actions.setSinger(current.id, n)} placeholder="Add singer name" />{semitones ? <span className="ml-3 text-sm text-teal-700">🎚️ Key {semitones > 0 ? '+' : ''}{semitones}</span> : null}</p>}
           </div>
+          {current && hasBoth(current) && (
+            <VersionToggle value={current.version ?? 'karaoke'} onChange={(v) => actions.setVersion(current.id, v)} />
+          )}
           {queue[0] && (
             <p className="text-sm sm:text-base lg:text-lg text-slate-600 truncate max-w-[34%]">
               Up next: {queue[0].singer ? <b>{queue[0].singer}</b> : <button className="font-semibold text-pink-600 underline decoration-dotted" onClick={() => togglePanel('queue')}>+ add name</button>} · {queue[0].title}{queue.length > 1 ? ` (+${queue.length - 1})` : ''}
@@ -376,7 +385,7 @@ export default function App() {
           </div>
           {panel === 'queue' && (
             <>
-              <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} onRename={actions.setSinger} />
+              <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} onRename={actions.setSinger} onVersion={actions.setVersion} />
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" className="w-5 h-5" checked={autoNext} onChange={(e) => setAutoNext(e.target.checked)} />
                 Auto-play next song
@@ -423,13 +432,14 @@ export default function App() {
             )}
             <SongPicker
               library={library}
-              queuedIds={[current, ...queue].filter(Boolean).map((s) => s.videoId)}
+              queuedIds={[current, ...queue].filter(Boolean).map((s) => s.libId ?? s.videoId)}
               onPick={actions.addFromLibrary}
               onQuickAdd={actions.quickAdd}
               admin={adminMode}
               canEdit={canEdit}
               onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
               onRename={(song, title) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, title } : x)))}
+              onSetVersion={(song, kind, id) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, ...(kind === 'karaoke' ? { karaokeId: id } : { officialId: id }) } : x)))}
               dbError={libraryError}
             />
           </div>

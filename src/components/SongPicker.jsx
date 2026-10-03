@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addSinger, clearSingers, getSingers, onSingersChange, removeSinger } from '../lib/singers.js'
 import { GROUPS, genreGroup } from '../lib/genres.js'
+import { hasBoth, resolveVersion, versionsOf } from '../lib/songs.js'
+import { parseYouTubeId } from '../lib/youtube.js'
+import { checkVideos } from '../lib/checkVideos.js'
+import VersionToggle from './VersionToggle.jsx'
 
 const VIEW_KEY = 'karaoke-picker-view'
 const loadView = () => {
   try { return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list' } catch { return 'list' } // list is the default
 }
+const PREF_KEY = 'karaoke-version-pref'
+const loadPref = () => {
+  try { return localStorage.getItem(PREF_KEY) === 'official' ? 'official' : 'karaoke' } catch { return 'karaoke' }
+}
+const inCategory = (s, g) => (g === 'Karaoke' ? !!s.karaokeId || genreGroup(s.genre) === 'Karaoke' : genreGroup(s.genre) === g)
+
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
-export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, dbError = '' }) {
+export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, onSetVersion, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [view, setViewState] = useState(loadView) // 'grid' (thumbnails) or 'list' (title + artist only)
@@ -15,6 +25,17 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     setViewState(v)
     try { localStorage.setItem(VIEW_KEY, v) } catch { /* ignore */ }
   }
+  // which video to queue: a default for everything (karaoke unless you pick otherwise) plus per-song overrides
+  const [pref, setPrefState] = useState(loadPref)
+  const [overrides, setOverrides] = useState({})
+  const setPref = (v) => {
+    setPrefState(v)
+    setOverrides({})
+    try { localStorage.setItem(PREF_KEY, v) } catch { /* ignore */ }
+  }
+  const effective = (s) => resolveVersion(s, overrides[s.videoId] ?? pref)
+  const [report, setReport] = useState(null) // video health check results (manager only)
+  const [checking, setChecking] = useState(false)
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
   const [singers, setSingers] = useState(getSingers)
@@ -23,7 +44,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
   // category chips: only the groups that actually have songs
   const counts = useMemo(() => {
     const c = {}
-    for (const s of library) c[genreGroup(s.genre)] = (c[genreGroup(s.genre)] ?? 0) + 1
+    for (const g of [...GROUPS, 'Other']) c[g] = library.filter((s) => inCategory(s, g)).length
     return c
   }, [library])
   const categories = [...GROUPS, 'Other'].filter((g) => counts[g])
@@ -32,7 +53,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     const q = search.trim().toLowerCase()
     return library.filter(
       (s) =>
-        (category === 'All' || genreGroup(s.genre) === category) &&
+        (category === 'All' || inCategory(s, category)) &&
         (!q || `${s.title} ${s.artist ?? ''}`.toLowerCase().includes(q)),
     )
   }, [library, search, category])
@@ -46,10 +67,50 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     if (title?.trim() && title.trim() !== song.title) onRename?.(song, title.trim())
   }
 
+  const addVersion = (song, kind) => {
+    const url = window.prompt(`Paste the YouTube link for the ${kind === 'karaoke' ? 'karaoke' : 'original'} version of "${song.title}"`)
+    const id = parseYouTubeId(url || '')
+    if (url && !id) return window.alert("That doesn't look like a YouTube link.")
+    if (id) onSetVersion?.(song, kind, id)
+  }
+  const runCheck = async () => {
+    setChecking(true)
+    const ids = library.flatMap((s) => [s.karaokeId, s.officialId].filter(Boolean).concat(!s.karaokeId && !s.officialId ? [s.videoId] : []))
+    setReport(await checkVideos(ids))
+    setChecking(false)
+  }
+  const problems = (s) => {
+    if (!report) return []
+    const v = versionsOf(s)
+    return [['karaoke', v.karaoke], ['official', v.official]].filter(([, id]) => id && report[id] && report[id] !== 'ok' && report[id] !== 'unknown')
+  }
+
+  // the small control on each song: switch version if there are two, otherwise say which one exists
+  const versionControl = (s) => {
+    const eff = effective(s)
+    if (hasBoth(s)) {
+      return <VersionToggle size="sm" value={eff.version} onChange={(v) => setOverrides((o) => ({ ...o, [s.videoId]: v }))} />
+    }
+    return <span className="text-xs font-semibold text-slate-500">{eff.version === 'karaoke' ? '🎤 Karaoke only' : '🎬 Original only'}</span>
+  }
+  const managerButtons = (s) => (
+    <span className="flex flex-wrap items-center gap-2 justify-end">
+      {problems(s).map(([kind, id]) => (
+        <span key={kind} className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${report[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
+          ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {report[id] === 'missing' ? 'gone' : 'blocked'}
+        </span>
+      ))}
+      {!versionsOf(s).karaoke && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'karaoke') }}>＋🎤 karaoke</span>}
+      {!versionsOf(s).official && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'official') }}>＋🎬 original</span>}
+      <span role="button" aria-label={`Rename ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-violet-200 text-xl cursor-pointer hover:bg-violet-300" onClick={(e) => { e.stopPropagation(); rename(s) }}>✏️</span>
+      <span role="button" aria-label={`Remove ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl cursor-pointer hover:bg-rose-700" onClick={(e) => { e.stopPropagation(); remove(s) }}>🗑️</span>
+    </span>
+  )
+
   const confirm = (name) => {
     const who = (name ?? singer).trim() // may be empty: they can be named later from the queue
     if (who) addSinger(who)
-    onPick(chosen, who)
+    onPick(chosen, who, effective(chosen).version)
     setChosen(null)
     setSinger('')
   }
@@ -60,6 +121,18 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
         <div className="rounded-2xl bg-rose-100 text-rose-900 p-3 mb-4">
           <p className="font-bold">🛠️ Managing the song library: {canEdit ? '✏️ renames a song, 🗑️ removes it. Tap Done when you\'re finished.' : 'sign in above to rename or remove songs.'}</p>
           {dbError && <p className="text-sm mt-1">{dbError}</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button className="big-btn !py-1.5 !text-base bg-white text-rose-800" onClick={runCheck} disabled={checking}>
+              {checking ? 'Checking…' : '🔍 Check that every video can play'}
+            </button>
+            {report && (
+              <span className="text-sm font-semibold">
+                {Object.values(report).filter((v) => v === 'blocked' || v === 'missing').length
+                  ? `⚠️ ${Object.values(report).filter((v) => v === 'blocked' || v === 'missing').length} video(s) can't be played here (marked below)`
+                  : Object.values(report).includes('unknown') ? "Couldn't check (offline?)" : '✅ All videos can be played'}
+              </span>
+            )}
+          </div>
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -71,6 +144,11 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
         />
         {search && (
           <button className="big-btn !py-2 bg-white/80" onClick={() => setSearch('')} aria-label="Clear search">✖</button>
+        )}
+        {!admin && (
+          <span className="flex items-center gap-2 rounded-xl bg-white/20 px-3 py-2 text-white font-semibold">
+            Play: <VersionToggle value={pref} onChange={setPref} />
+          </span>
         )}
         <div className="flex rounded-xl overflow-hidden shadow-md" role="group" aria-label="View">
           {[['grid', '🖼️ Pictures'], ['list', '☰ List']].map(([v, label]) => (
@@ -121,8 +199,9 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
               >
                 <span className="min-w-0 flex-1">
                   <span className="block font-bold text-lg sm:text-xl leading-tight truncate">{s.title}</span>
-                  {s.artist && <span className="block text-sm sm:text-base text-slate-500 truncate">{s.artist}{/karaoke/i.test(s.genre || '') ? ' · karaoke version' : ''}</span>}
+                  {s.artist && <span className="block text-sm sm:text-base text-slate-500 truncate">{s.artist}</span>}
                 </span>
+                {!admin && versionControl(s)}
                 {!admin && queuedIds.includes(s.videoId) && (
                   <span className="shrink-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">In line ✓</span>
                 )}
@@ -131,17 +210,12 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                     role="button"
                     aria-label={`Add ${s.title} to the queue`}
                     className="shrink-0 rounded-xl bg-pink-500 px-4 py-2 font-bold text-white shadow hover:bg-pink-600 cursor-pointer"
-                    onClick={(e) => { e.stopPropagation(); onQuickAdd(s) }}
+                    onClick={(e) => { e.stopPropagation(); onQuickAdd(s, effective(s).version) }}
                   >
                     ＋ Add
                   </span>
                 )}
-                {admin && canEdit && (
-                  <span className="shrink-0 flex gap-2">
-                    <span role="button" aria-label={`Rename ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-violet-200 text-xl cursor-pointer hover:bg-violet-300" onClick={(e) => { e.stopPropagation(); rename(s) }}>✏️</span>
-                    <span role="button" aria-label={`Remove ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl cursor-pointer hover:bg-rose-700" onClick={(e) => { e.stopPropagation(); remove(s) }}>🗑️</span>
-                  </span>
-                )}
+                {admin && canEdit && managerButtons(s)}
               </button>
             </li>
           ))}
@@ -155,26 +229,22 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
             className="group text-left rounded-2xl bg-white shadow-md overflow-hidden active:scale-95 hover:-translate-y-1 hover:shadow-xl transition"
           >
             <div className="relative aspect-video bg-violet-200">
-              <img loading="lazy" alt="" src={`https://i.ytimg.com/vi/${s.videoId}/mqdefault.jpg`} className="w-full h-full object-cover" />
-              {admin && canEdit && (
-                <span className="absolute top-2 right-2 flex gap-2">
-                  <span role="button" aria-label={`Rename ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-violet-200 text-xl shadow cursor-pointer hover:bg-violet-300" onClick={(e) => { e.stopPropagation(); rename(s) }}>✏️</span>
-                  <span role="button" aria-label={`Remove ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl shadow cursor-pointer hover:bg-rose-700" onClick={(e) => { e.stopPropagation(); remove(s) }}>🗑️</span>
-                </span>
-              )}
+              <img loading="lazy" alt="" src={`https://i.ytimg.com/vi/${effective(s).videoId}/mqdefault.jpg`} className="w-full h-full object-cover" />
+              {admin && canEdit && <span className="absolute inset-x-2 top-2 flex justify-end">{managerButtons(s)}</span>}
               {!admin && queuedIds.includes(s.videoId) && (
                 <span className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">In line ✓</span>
               )}
             </div>
             <div className="p-3">
               <p className="font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title}</p>
-              {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}{/karaoke/i.test(s.genre || '') ? ' · karaoke version' : ''}</p>}
+              {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}</p>}
+              {!admin && <div className="mt-1">{versionControl(s)}</div>}
               {!admin && onQuickAdd && (
                 <span
                   role="button"
                   aria-label={`Add ${s.title} to the queue`}
                   className="mt-2 inline-block rounded-xl bg-pink-500 px-3 py-1 text-sm font-bold text-white hover:bg-pink-600 cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); onQuickAdd(s) }}
+                  onClick={(e) => { e.stopPropagation(); onQuickAdd(s, effective(s).version) }}
                 >
                   ＋ Add to queue
                 </span>
@@ -189,6 +259,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setChosen(null)}>
           <div className="card w-full max-w-md space-y-3 animate-pop" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-2xl font-bold text-pink-600">🎤 {chosen.title}{chosen.artist && <span className="block text-base font-normal text-slate-500">{chosen.artist}</span>}</h3>
+            <p className="text-sm text-slate-500">{effective(chosen).version === 'karaoke' ? '🎤 Karaoke version' : '🎬 Original video'}</p>
             <p className="text-lg">Who's singing? <span className="text-sm text-slate-500">(optional, you can add it later)</span></p>
             {singers.length > 0 && (
               <div className="flex flex-wrap gap-2">

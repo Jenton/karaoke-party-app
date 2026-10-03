@@ -3,228 +3,96 @@
     "videoId": "nfKnvYFxrf0",
     "title": "Shake It Off",
     "artist": "Taylor Swift",
-    "genre": "Upbeat Pop"
+    "genre": "Pop",
+    "karaokeId": "8GJ5ped8a94",
+    "officialId": "nfKnvYFxrf0"
   },
   {
     "videoId": "ru0K8uYEZWw",
     "title": "Can't Stop the Feeling!",
     "artist": "Justin Timberlake",
-    "genre": "Dance Party"
+    "genre": "Dance Party",
+    "karaokeId": "9qPVNqbCJGA",
+    "officialId": "ru0K8uYEZWw"
   },
   {
     "videoId": "M11SvDtPBhA",
     "title": "Party in the U.S.A.",
     "artist": "Miley Cyrus",
-    "genre": "Pop Anthem"
+    "genre": "Pop Anthem",
+    "karaokeId": "wI72EKSPu3k",
+    "officialId": "M11SvDtPBhA"
   },
   {
     "videoId": "OPf0YbXqDm0",
     "title": "Uptown Funk",
     "artist": "Mark Ronson ft. Bruno Mars",
-    "genre": "Funky Pop"
+    "genre": "Funky Pop",
+    "karaokeId": "a8Dl6L9L9Qo",
+    "officialId": "OPf0YbXqDm0"
   },
   {
     "videoId": "L_jWHffIx5E",
     "title": "All Star",
     "artist": "Smash Mouth",
-    "genre": "Retro / Shrek"
+    "genre": "Retro / Shrek",
+    "karaokeId": "UClG5QIg_kE",
+    "officialId": "L_jWHffIx5E"
   },
   {
     "videoId": "L0MK7qz13bU",
     "title": "Let It Go",
     "artist": "Idina Menzel (Frozen)",
-    "genre": "Disney"
+    "genre": "Disney",
+    "karaokeId": "b_oS9bo-hh0",
+    "officialId": "L0MK7qz13bU"
   },
   {
     "videoId": "bvWRMAU6V-c",
     "title": "We Don't Talk About Bruno",
     "artist": "Encanto Cast",
-    "genre": "Disney"
+    "genre": "Disney",
+    "karaokeId": "5QIQ5QHqDbw",
+    "officialId": "bvWRMAU6V-c"
   },
   {
     "videoId": "gdZLi9oWNZg",
     "title": "Dynamite",
     "artist": "BTS",
-    "genre": "K-Pop / Dance"
+    "genre": "K-Pop / Dance",
+    "karaokeId": "te5wtDBivcs",
+    "officialId": "gdZLi9oWNZg"
   },
   {
     "videoId": "MYNzgzbSfPc",
     "title": "Happy",
     "artist": "Pharrell Williams",
-    "genre": "Feel-Good"
+    "genre": "Feel-Good",
+    "karaokeId": "QKt_8ndI_WM",
+    "officialId": "MYNzgzbSfPc"
   },
   {
     "videoId": "q0hyYWKXF0Q",
     "title": "Dance Monkey",
     "artist": "Tones And I",
-    "genre": "Catchy Pop"
+    "genre": "Catchy Pop",
+    "karaokeId": "l8Dr7vzMSVE",
+    "officialId": "q0hyYWKXF0Q"
   },
   {
     "videoId": "hE13j7E7Tbc",
     "title": "HOT TO GO!",
     "artist": "Chappell Roan",
-    "genre": "Viral Pop / Dance"
+    "genre": "Viral Pop / Dance",
+    "karaokeId": "MvTyo7NdKC0",
+    "officialId": "hE13j7E7Tbc"
   },
   {
-    "videoId": "v8m4x5vT-iE",
-    "title": "BIRDS OF A FEATHER",
-    "artist": "Billie Eilish",
-    "genre": "Catchy Pop"
-  },
-  {
-    "videoId": "eVli-tstM5E",
-    "title": "Espresso",
-    "artist": "Sabrina Carpenter",
-    "genre": "Upbeat Pop"
-  },
-  {
-    "videoId": "Oa_HXzGUsZs",
-    "title": "Beautiful Things",
-    "artist": "Benson Boone",
-    "genre": "Anthem / Sing-along"
-  },
-  {
-    "videoId": "QkX95K97VmA",
-    "title": "A Sky Full of Stars",
-    "artist": "Taron Egerton (Sing 2)",
-    "genre": "Movie Soundtracks"
-  },
-  {
-    "videoId": "hdcuyy3kPZY",
-    "title": "I Like To Move It",
-    "artist": "Madagascar Cast",
-    "genre": "Dance Party"
-  },
-  {
-    "videoId": "c6rAPAZWc54",
-    "title": "Try Everything",
-    "artist": "Shakira (Zootopia)",
-    "genre": "Disney / Animation"
-  },
-  {
-    "videoId": "ILXkruuVw0U",
-    "title": "Dance The Night",
-    "artist": "Dua Lipa (Barbie)",
-    "genre": "Pop Anthem"
-  },
-  {
-    "videoId": "KD4xZ4q4b6k",
-    "title": "Sunroof",
-    "artist": "Nicky Youre & dazy",
-    "genre": "Feel-Good Pop"
-  },
-  {
-    "videoId": "H5v3kku4y6Q",
-    "title": "As It Was",
-    "artist": "Harry Styles",
-    "genre": "Indie Pop"
-  },
-  {
-    "videoId": "QGJuMBdaqIw",
-    "title": "Firework",
-    "artist": "Katy Perry",
-    "genre": "Anthem / Sing-along"
-  },
-  {
-    "videoId": "fWNaR-rxAic",
-    "title": "Call Me Maybe",
-    "artist": "Carly Rae Jepsen",
-    "genre": "Pop Throwback"
-  },
-  {
-    "videoId": "Gn50g4UTWx4",
-    "title": "You've Got a Friend in Me",
-    "artist": "Randy Newman (Toy Story)",
-    "genre": "Disney / Classic"
-  },
-  {
-    "videoId": "-tJYN-eG1zk",
-    "title": "We Will Rock You",
-    "artist": "Queen",
-    "genre": "Classic Rock / Stomp"
-  },
-  {
-    "videoId": "iPUmE-tne5U",
-    "title": "Walking on Sunshine",
-    "artist": "Katrina and the Waves",
-    "genre": "Upbeat Retro"
-  },
-  {
-    "videoId": "XqZsoesa55w",
-    "title": "Baby Shark",
-    "artist": "Pinkfong",
-    "genre": "Novelty / Party"
-  },
-  {
-    "videoId": "cP8Wb5ktcSk",
-    "title": "How Far I'll Go",
-    "artist": "Auli'i Cravalho (Moana)",
-    "genre": "Disney"
-  },
-  {
-    "videoId": "FuJ1CWPqD4g",
-    "title": "Me! (feat. Brendon Urie)",
-    "artist": "Taylor Swift",
-    "genre": "Upbeat Pop"
-  },
-  {
-    "videoId": "i1U5D51n_8Y",
-    "title": "Peaches",
-    "artist": "Jack Black (Super Mario Bros. Movie)",
-    "genre": "Movie Soundtracks"
-  },
-  {
-    "videoId": "QV7tGfxa58E",
-    "title": "Steve's Lava Chicken",
-    "artist": "Jack Black (A Minecraft Movie)",
-    "genre": "Gaming / Comedy"
-  },
-  {
-    "videoId": "fQ7Bt10jUfM",
-    "title": "Golden (Original Video)",
+    "videoId": "OwpgvSo_G0g",
+    "title": "Golden",
     "artist": "HUNTR/X (KPop Demon Hunters)",
-    "genre": "Soundtrack / K-Pop"
-  },
-  {
-    "videoId": "taN3LS_9byQ",
-    "title": "Soda Pop (Original Video)",
-    "artist": "Saja Boys (KPop Demon Hunters)",
-    "genre": "Soundtrack / Boy Band"
-  },
-  {
-    "videoId": "br_luVN2zGA",
-    "title": "How It's Done (Original Video)",
-    "artist": "HUNTR/X (KPop Demon Hunters)",
-    "genre": "Soundtrack / K-Pop"
-  },
-  {
-    "videoId": "wI72EKSPu3k",
-    "title": "Takedown (Original Video)",
-    "artist": "TWICE (KPop Demon Hunters)",
-    "genre": "Soundtrack / K-Pop"
-  },
-  {
-    "videoId": "5QIQ5QHqDbw",
-    "title": "Your Idol (Original Video)",
-    "artist": "Saja Boys (KPop Demon Hunters)",
-    "genre": "Soundtrack / Boy Band"
-  },
-  {
-    "videoId": "te5wtDBivcs",
-    "title": "Free (Original Video)",
-    "artist": "Rumi & Jinu (KPop Demon Hunters)",
-    "genre": "Soundtrack / Duet"
-  },
-  {
-    "videoId": "b_oS9bo-hh0",
-    "title": "Golden (Karaoke Version)",
-    "artist": "HUNTR/X (KPop Demon Hunters)",
-    "genre": "Karaoke"
-  },
-  {
-    "videoId": "UClG5QIg_kE",
-    "title": "Soda Pop (Karaoke Version)",
-    "artist": "Saja Boys (KPop Demon Hunters)",
-    "genre": "Karaoke"
+    "genre": "Soundtrack / K-Pop",
+    "karaokeId": "b_oS9bo-hh0",
+    "officialId": "OwpgvSo_G0g"
   }
 ]

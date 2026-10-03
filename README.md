@@ -22,7 +22,7 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
 
-The starter library (`public/library.json`) has the 38 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
+The starter library (`public/library.json`) has 12 popular songs, each with a **karaoke** and an **original** video (`karaokeId` / `officialId`), plus artist and category. The video IDs came from an AI assistant and haven't been verified: use **🔍 Check that every video can play** in the manager (see below). On the first sign-in on a device the app **replaces the whole shared library with this starter list** (a one-off reset); after that it only adds starter songs it hasn't offered yet.
 
 ## Shared song database (Supabase): same list at any location
 
@@ -38,12 +38,18 @@ public page shows the same list on any laptop at any location with no git push, 
 5. Locally: put them in `.env` as `VITE_SUPABASE_URL=` and `VITE_SUPABASE_ANON_KEY=` and restart `npm run dev`.
    For the public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** tab → add repository variables
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
-6. Open the app, hold **🔧 Manage** in the picker, and sign in with the user from step 3. When you're signed in, the app adds starter songs it hasn't offered yet on that device to the database for you (nothing to click; songs you've removed don't come back). Artists for the starter songs are filled in from the bundled list, so the optional `alter table public.songs add column if not exists artist text;` is only needed if you want artists saved for songs you add yourself.
+6. Open the app, hold **🔧 Manage** in the picker, and sign in with the user from step 3. When you're signed in, the app adds starter songs it hasn't offered yet on that device to the database for you (nothing to click; songs you've removed don't come back). Artists for the starter songs are filled in from the bundled list, so the the optional `alter table public.songs add column if not exists artist text;` (also `genre`, `karaoke_id`, `official_id`, see `supabase/schema.sql`) is only needed if you want artists, categories and second videos saved for songs you add yourself.
 
 After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
 Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the
 Wi-Fi drops at the party the app still shows your songs. The queue itself still lives on the screen's laptop only.
 Do **not** put your YouTube API key or the Supabase "service_role" key in the public variables.
+
+## Karaoke and original versions
+
+Each song can have both a karaoke video and the original. They are **one entry** in the library, not two. In the picker the **Play: 🎤 Karaoke / 🎬 Original** switch sets the default for everything you add (karaoke is the default), and each song has its own small switch to override it. Once a song is queued or playing, the same switch appears in the **Queue** panel and under the stage so you can flip it any time (it restarts the song on the other video). If a video refuses to play (for example the original isn't allowed to be embedded), the app automatically switches to the other version and says so.
+
+**"Can't play outside the YouTube app" / "Playback on other websites has been disabled":** the video's owner has switched off embedding, which is common for official music-video uploads from labels. The fixes: use the **karaoke** version (karaoke channels usually allow embedding), swap in a different upload of the same song, or just let the automatic fallback pick the other version. In the manager, **🔍 Check that every video can play** marks any video that can't be embedded (✔ with an API key it asks YouTube directly; otherwise it uses YouTube's oEmbed check) so you can replace them before the party.
 
 ## Adding and managing songs (all in the song picker)
 
@@ -51,8 +57,8 @@ Everything lives in **🎵 Pick a song**. Kids search (title or artist), filter 
 
 To manage the library, **hold the small 🔧 Manage button for about a second** in the picker's top bar (a plain tap does nothing, so kids don't wander in), or use **⚙️ Host → 🛠️ Manage song library**. The picker turns into the manager:
 
-- An **Add songs to the library** card at the top: **YouTube search** (defaults to "kidz bop karaoke", embeddable and kid-safe results only), **Playlist** (paste a link or ID, up to 200 videos, then **Add all**), or **Paste link** (one video, optional artist and category; the title is filled in automatically when possible, with a thumbnail preview).
-- Every song in the list gets **✏️ rename** and **🗑️ remove** buttons (removing asks to confirm). Tap **✅ Done** to go back to picking.
+- An **Add songs to the library** card at the top: **YouTube search** (defaults to "kidz bop karaoke", embeddable and kid-safe results only), **Playlist** (paste a link or ID, up to 200 videos, then **Add all**), or **Paste link** (one video, say whether it's the karaoke or the original, optional artist and category; the title is filled in automatically when possible, with a thumbnail preview).
+- Every song in the list gets **✏️ rename** and **🗑️ remove** buttons (removing asks to confirm), and **＋🎤 karaoke / ＋🎬 original** buttons to attach the missing version by pasting a link. **🔍 Check that every video can play** flags videos that are blocked or gone. Tap **✅ Done** to go back to picking.
 
 New songs show up in the list straight away; use **＋ Add** on them to queue them. No password is needed; with the shared database you just sign in once per device (the sign-in form appears in the manager if you aren't). Titles from YouTube are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"). Without a database the list is `public/library.json` on your laptop (commit it if you like).
 

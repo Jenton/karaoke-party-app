@@ -1,6 +1,8 @@
 import EditableName from './EditableName.jsx'
+import VersionToggle from './VersionToggle.jsx'
+import { hasBoth } from '../lib/songs.js'
 
-export default function Queue({ queue, onPlay, onRemove, onMoveUp, onRename }) {
+export default function Queue({ queue, onPlay, onRemove, onMoveUp, onRename, onVersion }) {
   return (
     <section className="card">
       <h2 className="text-2xl font-bold text-orange-600 mb-3">🎟️ Next up ({queue.length})</h2>
@@ -13,6 +15,7 @@ export default function Queue({ queue, onPlay, onRemove, onMoveUp, onRename }) {
               <p className="font-bold truncate">{s.title}</p>
               <p className="text-sm text-slate-600 truncate">🎤 <EditableName value={s.singer} onSave={onRename && ((name) => onRename(s.id, name))} /></p>
             </div>
+            {onVersion && hasBoth(s) && <VersionToggle size="sm" value={s.version ?? 'karaoke'} onChange={(v) => onVersion(s.id, v)} />}
             {onMoveUp && i > 0 && (
               <button aria-label="Move up" className="px-2 py-1 rounded-lg bg-white" onClick={() => onMoveUp(s.id)}>⬆️</button>
             )}
