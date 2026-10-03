@@ -7,7 +7,7 @@ export default function LibraryAdmin({ library, save }) {
   const [enabled, setEnabled] = useState(null) // is a YouTube API key configured?
   const [mode, setMode] = useState('search')
   const [query, setQuery] = useState('kidz bop karaoke')
-  const [playlist, setPlaylist] = useState('')
+  const [playlist, setPlaylist] = useState('https://www.youtube.com/playlist?list=PL5pvzdXbuo274HniZxrytCoUs44IjLUuX') // official KIDZ BOP Karaoke playlist
   const [results, setResults] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
