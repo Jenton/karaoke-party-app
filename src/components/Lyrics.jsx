@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { findLyrics, parseLrc } from '../lib/lyrics.js'
 
-const SIZES = ['text-2xl', 'text-3xl', 'text-4xl', 'text-5xl', 'text-6xl', 'text-7xl']
+// lyric size in vw so it scales with the screen (TV or laptop)
+const SIZES = [1.6, 2, 2.5, 3.1, 3.8, 4.6]
+const fontSize = (i) => ({ fontSize: `clamp(1.25rem, ${SIZES[i]}vw, 5.5rem)` })
 
 // High-contrast lyric screen. With synced lyrics it highlights the current line.
 export default function Lyrics({ song, getTime, onChange }) {
-  const [size, setSize] = useState(3)
+  const [size, setSize] = useState(2)
   const [editing, setEditing] = useState(false)
   const [matches, setMatches] = useState([])
   const [matchIdx, setMatchIdx] = useState(0)
@@ -69,11 +71,11 @@ export default function Lyrics({ song, getTime, onChange }) {
     if (song && !song.lyrics?.trim()) search()
   }, [song?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const btn = '!py-1 !text-base'
+  const btn = '!py-1 !px-3 !text-sm !rounded-xl'
   return (
-    <section className="rounded-3xl bg-black text-yellow-200 shadow-xl p-4 sm:p-6">
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <h2 className="text-xl font-bold text-white mr-auto">📜 Lyrics</h2>
+    <section className="rounded-3xl bg-black text-yellow-200 shadow-xl p-4 sm:p-5 flex flex-col h-full min-h-0">
+      <div className="flex flex-wrap items-center gap-2 mb-3 shrink-0">
+        <h2 className="text-lg font-bold text-white mr-auto">📜 Lyrics</h2>
         <button className={`big-btn ${btn} bg-white text-black`} onClick={() => setSize((s) => Math.max(0, s - 1))}>A−</button>
         <button className={`big-btn ${btn} bg-white text-black`} onClick={() => setSize((s) => Math.min(SIZES.length - 1, s + 1))}>A+</button>
         <button className={`big-btn ${btn} bg-lime-300 text-black`} disabled={!song} onClick={search}>🔍 Find lyrics</button>
@@ -85,9 +87,9 @@ export default function Lyrics({ song, getTime, onChange }) {
         </button>
       </div>
 
-      {status && <p className="text-sm text-slate-300 mb-2">{status}</p>}
+      {status && <p className="text-sm text-slate-300 mb-2 shrink-0">{status}</p>}
       {lines.length > 0 && !editing && (
-        <div className="flex flex-wrap items-center gap-2 mb-3 text-white text-sm">
+        <div className="flex flex-wrap items-center gap-2 mb-3 text-white text-sm shrink-0">
           <label className="flex items-center gap-1">
             <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Follow along
           </label>
@@ -101,25 +103,27 @@ export default function Lyrics({ song, getTime, onChange }) {
       {editing ? (
         <textarea
           autoFocus
-          className="w-full h-72 rounded-xl p-3 text-lg bg-slate-900 text-white border-2 border-cyan-300"
+          className="w-full flex-1 min-h-[16rem] rounded-xl p-3 text-lg bg-slate-900 text-white border-2 border-cyan-300"
           placeholder="Paste the lyrics here..."
           value={song?.lyrics ?? ''}
           onChange={(e) => onChange({ lyrics: e.target.value, synced: '' })}
         />
       ) : useSynced ? (
-        <div className={`${SIZES[size]} font-bold leading-snug text-center max-h-[60vh] overflow-y-auto py-[20vh]`}>
+        <div style={fontSize(size)} className="font-bold leading-snug text-center flex-1 min-h-0 overflow-y-auto">
+          <div className="h-[30%]" aria-hidden />
           {lines.map((l, i) => (
             <p
               key={i}
               ref={(el) => (lineRefs.current[i] = el)}
-              className={`transition-all duration-300 ${i === active ? 'text-white scale-105 my-2' : 'text-yellow-200/50'}`}
+              className={`px-2 transition-all duration-300 ${i === active ? 'text-white my-2' : 'text-yellow-200/50'}`}
             >
               {l.text || '♪'}
             </p>
           ))}
+          <div className="h-[40%]" aria-hidden />
         </div>
       ) : (
-        <div className={`${SIZES[size]} font-bold leading-snug whitespace-pre-wrap max-h-[60vh] overflow-y-auto text-center`}>
+        <div style={fontSize(size)} className="font-bold leading-snug whitespace-pre-wrap flex-1 min-h-0 overflow-y-auto text-center">
           {song?.lyrics?.trim() || <span className="text-slate-400">No lyrics yet. Tap Find lyrics or Edit and paste some! 🎵</span>}
         </div>
       )}

@@ -61,7 +61,7 @@ Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily 
 
 1. Plug the laptop into the screen, run the app, drag its window to the screen and press F11 for full screen.
 2. Click **Tap to start the party** once (browsers need a click before they allow sound).
-3. Kids tap **🎵 Pick a song!**, tap a song, choose or type their name, and it joins the queue (the first song starts right away).
+3. The screen is all stage: the video on the left and big lyrics on the right, with who's singing and the next few singers under the video. Everything else is a small button on the top bar: **🎵 Pick a song** (kids tap a song, choose or type their name, and it joins the queue; the first song starts right away), **🎟️ Queue**, **🎚️ Key**, **🔧 Grown-ups**, and **⛶** full screen. Those panels slide in from the side and close again.
 4. **Lyrics are found automatically** (from [LRCLIB](https://lrclib.net), a free lyrics database) when a song starts. Use 🔍 Find lyrics to retry, ↻ Try another if the match is wrong, or ✏️ Edit to paste your own. When timed lyrics exist, the current line is highlighted and scrolls along with the video; use Timing earlier/later if it's off. The laptop needs internet for this.
 5. When a song ends, the next one starts after 3 seconds (toggle **Auto-play next**).
 6. Optional: phones on the same Wi-Fi can open the link shown under 🔧 Grown-ups (`http://<laptop-ip>:5173/?remote`) to pick songs from the library too.
