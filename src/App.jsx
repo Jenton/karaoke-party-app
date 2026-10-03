@@ -7,6 +7,7 @@ import Lyrics from './components/Lyrics.jsx'
 import PitchControls from './components/PitchControls.jsx'
 import SongPicker from './components/SongPicker.jsx'
 import LibraryAdmin from './components/LibraryAdmin.jsx'
+import { HAS_SERVER } from './lib/env.js'
 import { useLibrary } from './hooks/useLibrary.js'
 import RemoteView from './components/RemoteView.jsx'
 
@@ -55,6 +56,7 @@ export default function App() {
   useEffect(() => setSemitones(0), [current?.id])
 
   useEffect(() => {
+    if (!HAS_SERVER) return
     fetch('/api/info').then((r) => r.json()).then((d) => setAddresses(d.addresses)).catch(() => {})
   }, [])
 
@@ -118,7 +120,7 @@ export default function App() {
           <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} />
           <PitchControls semitones={semitones} onChange={setSemitones} />
           {admin && <LibraryAdmin library={library} save={saveLibrary} />}
-          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={(s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />}
+          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={HAS_SERVER ? (s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s]) : undefined} />}
           {admin && phoneUrl && (
             <div className="card text-center">
               <p className="font-bold text-violet-700">📱 Add songs from a phone</p>

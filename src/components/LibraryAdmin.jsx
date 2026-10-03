@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { HAS_SERVER } from '../lib/env.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 
 // Grown-ups only: build the curated song list from YouTube search, a playlist, or a pasted link.
@@ -14,6 +15,7 @@ export default function LibraryAdmin({ library, save }) {
   const [linkTitle, setLinkTitle] = useState('')
 
   useEffect(() => {
+    if (!HAS_SERVER) return
     fetch('/api/youtube/status').then((r) => r.json()).then((d) => setEnabled(d.enabled)).catch(() => setEnabled(false))
   }, [])
 
@@ -55,6 +57,15 @@ export default function LibraryAdmin({ library, save }) {
   const tab = (id, label) => (
     <button className={`big-btn !py-2 !text-base ${mode === id ? 'bg-violet-600 text-white' : 'bg-violet-100'}`} onClick={() => { setMode(id); setError('') }}>{label}</button>
   )
+
+  if (!HAS_SERVER) {
+    return (
+      <section className="card">
+        <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
+        <p className="mt-2">This public page shows the saved song list. To change it, run the app on your laptop (<code>npm run dev</code>), edit the library, then commit <code>public/library.json</code> and push.</p>
+      </section>
+    )
+  }
 
   return (
     <section className="card space-y-3">

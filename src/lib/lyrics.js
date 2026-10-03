@@ -1,4 +1,6 @@
-// Auto lyrics lookup via the dev server's /api/lyrics proxy (LRCLIB).
+import { HAS_SERVER } from './env.js'
+
+// Auto lyrics lookup via LRCLIB (through the local server's /api/lyrics proxy when there is one).
 
 // "Let It Go (Karaoke Version) - Kidz Bop" -> "Let It Go"
 export function cleanTitle(title) {
@@ -13,7 +15,9 @@ export function cleanTitle(title) {
 // Returns a list of candidates: { label, plain, synced }
 export async function findLyrics(title) {
   const q = cleanTitle(title) || title
-  const r = await fetch('/api/lyrics?q=' + encodeURIComponent(q))
+  const r = await fetch(
+    (HAS_SERVER ? '/api/lyrics?q=' : 'https://lrclib.net/api/search?q=') + encodeURIComponent(q),
+  )
   if (!r.ok) throw new Error('lookup failed')
   const list = await r.json()
   return list

@@ -13,6 +13,15 @@ npm run dev              # open http://localhost:5173 on the laptop
 The key is only read by the local server; it never reaches the browser. Without a key everything still works,
 you just add songs by pasting links.
 
+## Public web page (GitHub Pages)
+
+Every push to `main` is built and published by `.github/workflows/pages.yml` to
+`https://jenton.github.io/karaoke-party-app/` (one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
+
+The public page is static: it shows the song list from `public/library.json`, finds lyrics directly from LRCLIB, and the
+queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
+To update the public song list: build it locally with the Grown-ups panel, then `git add public/library.json`, commit and push.
+
 ## Before the party: build the song list (grown-ups)
 
 Click **🔧 Grown-ups** → **Song library**:
@@ -22,7 +31,7 @@ Click **🔧 Grown-ups** → **Song library**:
 - **Paste link**: add one video with your own title.
 
 Use **＋** per song or **Add all**. Titles are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"); use
-**Manage saved songs** to rename or remove. The list is saved in `data/library.json`, so it's still there next time (commit it if you like).
+**Manage saved songs** to rename or remove. The list is saved in `public/library.json`, so it's still there next time (commit it if you like).
 Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily quota is plenty.
 
 ## At the party
@@ -51,7 +60,7 @@ Turn the key changer off (or press the browser's "Stop sharing") to return to no
 ```
 index.html  vite.config.js  tailwind.config.js  .env.example
 server/partyApi.js             API inside the Vite server: queue, library, YouTube (key stays here), lyrics
-data/library.json              your curated songs
+public/library.json              your curated songs
 src/
   main.jsx  App.jsx  index.css
   hooks/useSharedState.js      queue/current-song state, synced to the server + localStorage

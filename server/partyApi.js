@@ -1,13 +1,13 @@
 // Tiny API that runs inside the Vite dev/preview server (no separate backend):
 //   /api/state      shared queue + current song (in memory) so phones and the laptop agree
-//   /api/library    the curated song list, saved to data/library.json
+//   /api/library    the curated song list, saved to public/library.json
 //   /api/lyrics     lyrics lookup proxy (LRCLIB)
 //   /api/youtube/*  YouTube Data API v3 helpers; the API key stays on the server (.env)
 import os from 'node:os'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const LIBRARY_FILE = path.resolve('data/library.json')
+const LIBRARY_FILE = path.resolve('public/library.json')
 const YT = 'https://www.googleapis.com/youtube/v3'
 
 const lanAddresses = () =>

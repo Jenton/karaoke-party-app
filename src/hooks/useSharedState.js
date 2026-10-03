@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { HAS_SERVER } from '../lib/env.js'
 
 const KEY = 'karaoke-party-state'
 const empty = { queue: [], current: null }
@@ -45,6 +46,7 @@ export function useSharedState() {
   }, [])
 
   useEffect(() => {
+    if (!HAS_SERVER) return
     let stop = false
     const tick = async () => {
       try {
