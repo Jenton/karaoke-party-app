@@ -63,6 +63,11 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
     }
   }, [])
 
+  // autoplay turned on while the video is already cued (tap-to-start, or the end of the get-ready countdown)
+  useEffect(() => {
+    if (autoplay && loadedId.current && loadedId.current === latest.current.videoId) player.current?.playVideo?.()
+  }, [autoplay])
+
   // swap the video when the song changes
   useEffect(sync, [videoId, autoplay])
 

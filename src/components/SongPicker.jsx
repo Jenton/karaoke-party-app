@@ -3,6 +3,10 @@ import { SignIn } from './LibraryAdmin.jsx'
 import { GROUPS, genreGroup } from '../lib/genres.js'
 
 const SINGERS_KEY = 'karaoke-singers'
+const VIEW_KEY = 'karaoke-picker-view'
+const loadView = () => {
+  try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
+}
 const loadSingers = () => {
   try { return JSON.parse(localStorage.getItem(SINGERS_KEY)) || [] } catch { return [] }
 }
@@ -11,6 +15,11 @@ const loadSingers = () => {
 export default function SongPicker({ library, onPick, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
+  const [view, setViewState] = useState(loadView) // 'grid' (thumbnails) or 'list' (title + artist only)
+  const setView = (v) => {
+    setViewState(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* ignore */ }
+  }
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
   const [singers, setSingers] = useState(loadSingers)
@@ -64,6 +73,18 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
         {search && (
           <button className="big-btn !py-2 bg-white/80" onClick={() => setSearch('')} aria-label="Clear search">✖</button>
         )}
+        <div className="flex rounded-xl overflow-hidden shadow-md" role="group" aria-label="View">
+          {[['grid', '🖼️ Pictures'], ['list', '☰ List']].map(([v, label]) => (
+            <button
+              key={v}
+              aria-pressed={view === v}
+              onClick={() => setView(v)}
+              className={`px-4 py-3 font-bold ${view === v ? 'bg-yellow-300 text-violet-800' : 'bg-white/30 text-white hover:bg-white/40'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {categories.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2 mb-3" role="tablist" aria-label="Filter by category">
@@ -82,7 +103,7 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
       )}
       {library.length === 0 && (
         <p className="text-lg text-slate-600 text-center py-10">
-          No songs yet! Tap <b>➕ Add a song</b> to start the song list.
+          No songs yet! Ask the host to add some. 🎶
         </p>
       )}
       {library.length > 0 && shown.length === 0 && (
@@ -91,6 +112,39 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
           <button className="big-btn bg-white text-violet-700" onClick={() => { setSearch(''); setCategory('All') }}>Show all songs</button>
         </div>
       )}
+      {view === 'list' ? (
+        <ul className="grid gap-2 lg:grid-cols-2">
+          {shown.map((s) => (
+            <li key={s.videoId}>
+              <button
+                onClick={() => (admin ? undefined : setChosen(s))}
+                className="w-full flex items-center gap-3 text-left rounded-2xl bg-white shadow px-4 py-3 active:scale-[0.98] hover:bg-violet-50 transition"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-bold text-lg sm:text-xl leading-tight truncate">{s.title}</span>
+                  {s.artist && <span className="block text-sm sm:text-base text-slate-500 truncate">{s.artist}</span>}
+                </span>
+                {!admin && queuedIds.includes(s.videoId) && (
+                  <span className="shrink-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">In line ✓</span>
+                )}
+                {admin && (
+                  <span
+                    role="button"
+                    aria-label={`Remove ${s.title}`}
+                    className="shrink-0 w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl cursor-pointer hover:bg-rose-700"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (window.confirm(`Remove "${s.title}" from the library?`)) onRemove?.(s)
+                    }}
+                  >
+                    🗑️
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {shown.map((s) => (
           <button
@@ -124,6 +178,7 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
           </button>
         ))}
       </div>
+      )}
 
       {chosen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setChosen(null)}>
