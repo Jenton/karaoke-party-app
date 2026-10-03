@@ -38,8 +38,7 @@ public page shows the same list on any laptop at any location with no git push, 
 5. Locally: put them in `.env` as `VITE_SUPABASE_URL=` and `VITE_SUPABASE_ANON_KEY=` and restart `npm run dev`.
    For the public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** tab → add repository variables
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
-6. Open the app → ➕ Add songs, sign in with the user from step 3, and click **＋ Add N starter songs to the library** (first time only; it only adds songs that aren't in the database yet).
-   Already created the table before the `artist` column existed? Run `alter table public.songs add column if not exists artist text;` in the SQL Editor (the app keeps working without it, it just won't save artists).
+6. Open the app → **➕ Add songs** and sign in with the user from step 3. The first time you're signed in on a device, the app adds the starter songs to the database for you (nothing to click). Artists for the starter songs are filled in from the bundled list, so the optional `alter table public.songs add column if not exists artist text;` is only needed if you want artists saved for songs you add yourself.
 
 After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
 Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the

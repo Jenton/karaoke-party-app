@@ -42,6 +42,7 @@ export function useLibrary() {
   const dbOk = useRef(false)
   const artistCol = useRef(true) // false if the database was created before the artist column existed
   const [starters, setStarters] = useState([])
+  const artists = useRef(new Map()) // videoId -> artist from the bundled list, for songs saved without one
 
   const setLibrary = (list) => {
     current.current = list
@@ -67,7 +68,7 @@ export function useLibrary() {
           }
           const { data, error: err } = res
           if (err) throw err
-          const list = data.map(fromRow)
+          const list = data.map(fromRow).map((s) => (s.artist || !artists.current.has(s.videoId) ? s : { ...s, artist: artists.current.get(s.videoId) }))
           dbOk.current = true
           writeJson(CACHE_KEY, list)
           setLibrary(list)
@@ -90,8 +91,15 @@ export function useLibrary() {
     }
   }, [loadFile])
 
-  useEffect(() => { reload() }, [reload])
-  useEffect(() => { if (supabase) loadFile().then(setStarters).catch(() => {}) }, [loadFile])
+  useEffect(() => {
+    // the bundled list first (so artists can be filled in), then the database
+    const start = supabase ? loadFile().catch(() => []) : Promise.resolve([])
+    start.then((list) => {
+      artists.current = new Map(list.filter((s) => s.artist).map((s) => [s.videoId, s.artist]))
+      setStarters(list)
+      reload()
+    })
+  }, [loadFile, reload])
 
   const save = useCallback(
     async (next) => {
@@ -115,22 +123,24 @@ export function useLibrary() {
           }
           writeJson(CACHE_KEY, next)
           setError('')
+          return true
         } catch (e) {
           setError(`Couldn't save to the database (${e.message}). Are you signed in?`)
           reload()
+          return false
         }
-        return
       }
 
       if (HAS_SERVER) {
         fetch('/api/library', { method: 'POST', body: JSON.stringify(next) }).catch(() => {})
-        return
+        return true
       }
       const baseById = new Map(base.current.map((s) => [s.videoId, s]))
       writeJson(LOCAL_KEY, {
         added: next.filter((s) => !sameSong(baseById.get(s.videoId), s)),
         removed: base.current.filter((s) => !next.some((n) => n.videoId === s.videoId)).map((s) => s.videoId),
       })
+      return true
     },
     [reload],
   )

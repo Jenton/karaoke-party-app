@@ -20,9 +20,16 @@ export default function App() {
   const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'add' | null
   const [picking, setPicking] = useState(false)
   const [adminMode, setAdminMode] = useState(false) // lets you remove songs from the picker
-  const { library, save: saveLibrary, reload, error: libraryError, missingStarters, addStarters, usingDb } = useLibrary()
+  const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, usingDb } = useLibrary()
   const auth = useAuth()
   const canEdit = !usingDb || !!auth.session
+
+  // One time per device: the first time you're signed in, put the starter songs in the database for you.
+  useEffect(() => {
+    if (!usingDb || !canEdit || !loaded || libraryError || !missingStarters.length) return
+    if (localStorage.getItem('karaoke-starters-added')) return
+    addStarters().then((ok) => ok && localStorage.setItem('karaoke-starters-added', '1'))
+  }, [usingDb, canEdit, loaded, libraryError, missingStarters.length, addStarters])
   const [autoNext, setAutoNext] = useState(true)
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
