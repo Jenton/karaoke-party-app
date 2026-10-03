@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.js'
 
 const LOCAL_KEY = 'karaoke-library-edits-v2'
 const CACHE_KEY = 'karaoke-library-cache-v2'
+const OVR_KEY = 'karaoke-id-overrides-v1' // replacement videos you picked: { songKey: { karaokeId?, officialId? } }
 
 const readJson = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
@@ -15,6 +16,11 @@ const writeJson = (key, value) => {
 const readEdits = () => {
   const e = readJson(LOCAL_KEY, {})
   return { added: e.added ?? [], removed: e.removed ?? [] }
+}
+
+const applyOverrides = (list) => {
+  const o = readJson(OVR_KEY, {})
+  return list.map((s) => (o[s.videoId] ? { ...s, ...o[s.videoId] } : s))
 }
 
 // base list + this browser's edits (added/renamed songs, removed songs)
@@ -58,8 +64,9 @@ export function useLibrary() {
   const meta = useRef(new Map()) // videoId -> { artist, genre, karaokeId, officialId } from the bundled list, for songs saved without them
 
   const setLibrary = (list) => {
-    current.current = list
-    setLibraryState(list)
+    const withOverrides = applyOverrides(list)
+    current.current = withOverrides
+    setLibraryState(withOverrides)
   }
 
   const loadFile = useCallback(async () => {
@@ -117,6 +124,17 @@ export function useLibrary() {
   const save = useCallback(
     async (next) => {
       const prev = current.current
+      // remember replacement videos (different from the bundled list) on this device, so they stick
+      const ovr = {}
+      for (const song of next) {
+        const m = meta.current.get(song.videoId)
+        if (!m) continue
+        const diff = {}
+        if (song.karaokeId && song.karaokeId !== m.karaokeId) diff.karaokeId = song.karaokeId
+        if (song.officialId && song.officialId !== m.officialId) diff.officialId = song.officialId
+        if (Object.keys(diff).length) ovr[song.videoId] = diff
+      }
+      writeJson(OVR_KEY, ovr)
       setLibrary(next)
 
       if (supabase) {
@@ -162,7 +180,10 @@ export function useLibrary() {
   const missingStarters = starters.filter((s) => !library.some((l) => l.videoId === s.videoId))
   const addStarters = useCallback(() => save([...current.current, ...missingStarters]), [save, missingStarters])
 
+  // change fields of one song using the latest list (safe to call several times in a row)
+  const patchSong = useCallback((key, patch) => save(current.current.map((x) => (x.videoId === key ? { ...x, ...patch } : x))), [save])
+
   const addSongs = useCallback((list) => save([...current.current, ...list]), [save])
 
-  return { library, save, reload, loaded, error, missingStarters, addStarters, addSongs, starters, usingDb: !!supabase }
+  return { library, save, reload, loaded, error, missingStarters, addStarters, addSongs, patchSong, starters, usingDb: !!supabase }
 }

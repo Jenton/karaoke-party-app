@@ -10,6 +10,8 @@ import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
 import { hasBoth, otherVersion, resolveVersion, versionUsable, versionsOf } from './lib/songs.js'
 import { useVideoHealth } from './hooks/useVideoHealth.js'
+import { useLyricsScan } from './hooks/useLyricsScan.js'
+import { RETIRED_STARTERS } from './lib/retired.js'
 import VersionToggle from './components/VersionToggle.jsx'
 import { addSinger, clearSingers } from './lib/singers.js'
 import EditableName from './components/EditableName.jsx'
@@ -33,10 +35,21 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const [readyId, setReadyId] = useState(null) // song whose get-ready countdown has finished
   const [count, setCount] = useState(0)
-  const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, addSongs, starters, usingDb } = useLibrary()
+  const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, addSongs, patchSong, starters, usingDb } = useLibrary()
   const auth = useAuth()
   const { health, checking: checkingVideos, recheck, reportBad } = useVideoHealth(library)
+  const { scan, scanning, rescan, hideExplicit, setHideExplicit } = useLyricsScan(library)
   const canEdit = !usingDb || !!auth.session
+
+  // When signed in, remove songs we've retired from the starter list (e.g. too explicit) from the database, once per device.
+  useEffect(() => {
+    if (!usingDb || !canEdit || !loaded || libraryError) return
+    const FLAG = 'karaoke-retired-v2'
+    if (localStorage.getItem(FLAG)) return
+    const stale = library.filter((s) => RETIRED_STARTERS.includes(s.videoId))
+    if (!stale.length) return localStorage.setItem(FLAG, '1')
+    saveLibrary(library.filter((s) => !RETIRED_STARTERS.includes(s.videoId))).then((ok) => ok && localStorage.setItem(FLAG, '1'))
+  }, [usingDb, canEdit, loaded, libraryError, library, saveLibrary])
 
   // When signed in, keep the shared database in step with the bundled starter list:
   //  - first time on this device: replace the whole library with the starter list (the one-off reset);
@@ -388,6 +401,16 @@ export default function App() {
           </div>
           <div className="flex gap-2">
             <button className="rounded-lg px-3 py-1.5 bg-slate-100 text-slate-800 font-semibold disabled:opacity-40" disabled={!current || holding} onClick={() => player.current?.seekBy(-10)} title="Back 10 seconds (←)">⏪ 10s</button>
+            {!nativeLyrics && lyrics.lines.length > 0 && (
+              <button
+                className="rounded-lg px-3 py-1.5 bg-amber-100 text-amber-900 font-semibold disabled:opacity-40"
+                disabled={!current || holding}
+                onClick={() => lyrics.syncNow() && setToast({ id: Date.now(), text: '🎯 Lyrics synced to this moment' })}
+                title="Tap the moment the first words of the song are sung (keyboard: S). Remembered for this video."
+              >
+                🎯 Sync lyrics
+              </button>
+            )}
             <button className="rounded-lg px-3 py-1.5 bg-violet-100 text-violet-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.togglePlay()} title="Pause / play (space)">{playing ? '⏸️ Pause' : '▶️ Play'}</button>
             <button className="rounded-lg px-3 py-1.5 bg-slate-100 text-slate-800 font-semibold disabled:opacity-40" disabled={!current || holding} onClick={() => player.current?.seekBy(10)} title="Forward 10 seconds (→)">10s ⏩</button>
             <button className="rounded-lg px-3 py-1.5 bg-sky-100 text-sky-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.restart()}>🔁 Restart</button>
@@ -471,10 +494,15 @@ export default function App() {
               canEdit={canEdit}
               onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
               onRename={(song, title) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, title } : x)))}
-              onSetVersion={(song, kind, id) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, ...(kind === 'karaoke' ? { karaokeId: id } : { officialId: id }) } : x)))}
+              onSetVersion={(song, kind, id) => patchSong(song.videoId, kind === 'karaoke' ? { karaokeId: id } : { officialId: id })}
               health={health}
               checking={checkingVideos}
               onRecheck={recheck}
+              scan={scan}
+              scanning={scanning}
+              onRescan={rescan}
+              hideExplicit={hideExplicit}
+              onHideExplicit={setHideExplicit}
               dbError={libraryError}
             />
           </div>

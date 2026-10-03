@@ -121,7 +121,7 @@ export function partyApi(env = {}) {
         await Promise.all(ids.map(async (id) => {
           try {
             const r = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + id)}`)
-            out[id] = r.ok ? 'ok' : r.status === 404 ? 'missing' : r.status === 401 || r.status === 403 ? 'blocked' : 'unknown'
+            out[id] = r.ok ? 'ok' : r.status === 404 ? 'missing' : r.status === 401 ? 'blocked' : 'unknown'
           } catch { out[id] = 'unknown' }
         }))
         return out

@@ -54,10 +54,15 @@ Each song can have both a karaoke video and the original. They are **one entry**
 1. **Automatic health check:** in the background (on load, when the library changes, then cached for hours) the app asks YouTube whether each video exists and may be embedded (the laptop version uses your API key if there is one, otherwise YouTube's oEmbed check; the public page asks from the browser).
 2. **It steers around bad videos:** if the preferred version is blocked, the other one is used; a version known to be blocked is greyed out in the switch; a song with no working video is hidden from the kids' picker.
 3. **It learns while playing:** if a video still fails at play time, the app switches to the other version, remembers the failure, and avoids that video from then on.
-4. **You still see everything in the manager:** blocked or removed videos are flagged ⚠️ automatically, with **🔍 Re-check now**. Replace those at your leisure.
-5. Karaoke uploads (Sing King and similar) almost always allow embedding, which is why karaoke is the default.
+4. **Find a replacement:** in the manager (laptop version with a YouTube API key) each flagged video has **🔄 Find another**, which searches for embeddable uploads of the same song and lets you pick one (results that look right are tagged), and **🔄 Replace all blocked videos** does that automatically. Replacements are remembered on that device.
+5. **You still see everything in the manager:** blocked or removed videos are flagged ⚠️ automatically, with **🔍 Re-check now**. Replace those at your leisure.
+6. Karaoke uploads (Sing King and similar) almost always allow embedding, which is why karaoke is the default.
 
 Click the stage (video or visualizer) to pause/play; Space does the same.
+
+## Explicit lyrics
+
+On screen, explicit words are always shown as **[bloop]**. The app also scans every song's lyrics in the background and, in the manager, tags songs with **🔞 explicit** (strong language) or **🔞 mild** (damn, hell...) and shows the words found. Songs with strong language are **hidden from the kids' picker** (switch this off in the manager if you like). Note the audio itself isn't edited, so for songs that are explicit I look for a radio-edit or KIDZ BOP upload, or leave the song out.
 
 ## Seeding more songs
 

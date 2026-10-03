@@ -4,6 +4,8 @@ import { GROUPS, genreGroup } from '../lib/genres.js'
 import { hasBoth, isPlayable, resolveVersion, versionUsable, versionsOf } from '../lib/songs.js'
 import { parseYouTubeId } from '../lib/youtube.js'
 import { isBad } from '../lib/videoHealth.js'
+import { HAS_SERVER } from '../lib/env.js'
+import { findAlternatives, looksRight } from '../lib/alternatives.js'
 import VersionToggle from './VersionToggle.jsx'
 
 const VIEW_KEY = 'karaoke-picker-view'
@@ -17,7 +19,7 @@ const loadPref = () => {
 const inCategory = (s, g) => (g === 'Karaoke' ? !!s.karaokeId || genreGroup(s.genre) === 'Karaoke' : genreGroup(s.genre) === g)
 
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
-export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, onSetVersion, health = {}, checking = false, onRecheck, dbError = '' }) {
+export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, onSetVersion, health = {}, checking = false, onRecheck, scan = {}, scanning = false, onRescan, hideExplicit = true, onHideExplicit, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [view, setViewState] = useState(loadView) // 'grid' (thumbnails) or 'list' (title + artist only)
@@ -34,6 +36,8 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     try { localStorage.setItem(PREF_KEY, v) } catch { /* ignore */ }
   }
   const effective = (s) => resolveVersion(s, overrides[s.videoId] ?? pref, health)
+  const [alt, setAlt] = useState(null) // { song, kind, loading, error, results } while looking for a replacement video
+  const [fixMsg, setFixMsg] = useState('')
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
   const [singers, setSingers] = useState(getSingers)
@@ -41,7 +45,10 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
 
   // category chips: only the groups that actually have songs
   // songs whose videos are all known to be blocked or gone are hidden from kids (the manager still shows them, flagged)
-  const visible = useMemo(() => (admin ? library : library.filter((s) => isPlayable(s, health))), [library, health, admin])
+  const visible = useMemo(
+    () => (admin ? library : library.filter((s) => isPlayable(s, health) && !(hideExplicit && scan[s.videoId]?.s === 'strong'))),
+    [library, health, admin, hideExplicit, scan],
+  )
   const counts = useMemo(() => {
     const c = {}
     for (const g of [...GROUPS, 'Other']) c[g] = visible.filter((s) => inCategory(s, g)).length
@@ -73,6 +80,47 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     if (url && !id) return window.alert("That doesn't look like a YouTube link.")
     if (id) onSetVersion?.(song, kind, id)
   }
+  const openAlt = async (song, kind) => {
+    setAlt({ song, kind, loading: true, error: '', results: [] })
+    try {
+      setAlt({ song, kind, loading: false, error: '', results: await findAlternatives(song, kind) })
+    } catch (e) {
+      setAlt({ song, kind, loading: false, error: e.message, results: [] })
+    }
+  }
+  const pickAlt = (id) => {
+    onSetVersion?.(alt.song, alt.kind, id)
+    setAlt(null)
+  }
+  // replace every blocked video with the first search result that looks like the right song
+  const autoFix = async () => {
+    let fixed = 0
+    let failed = 0
+    setFixMsg('Looking for replacements…')
+    for (const s of library) {
+      for (const [kind, id] of [['karaoke', versionsOf(s).karaoke], ['official', versionsOf(s).official]]) {
+        if (!id || !isBad(health[id])) continue
+        try {
+          const found = (await findAlternatives(s, kind)).find((r) => r.good && r.videoId !== id)
+          if (found) { onSetVersion?.(s, kind, found.videoId); fixed++ } else failed++
+        } catch { failed++ }
+      }
+    }
+    setFixMsg(`Replaced ${fixed}${failed ? `, couldn't find a good match for ${failed} (use 🔄 Find another on those)` : ''}.`)
+  }
+  const explicitBadge = (s) => {
+    const r = scan[s.videoId]
+    if (!r || (r.s !== 'strong' && r.s !== 'mild')) return null
+    return (
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.s === 'strong' ? 'bg-rose-200 text-rose-900' : 'bg-amber-100 text-amber-900'}`}
+        title={`Words found in the lyrics: ${r.words.join(', ')}`}
+      >
+        🔞 {r.s === 'strong' ? 'explicit' : 'mild'}: {r.words.slice(0, 3).join(', ')}
+      </span>
+    )
+  }
+
   const problems = (s) => {
     const v = versionsOf(s)
     return [['karaoke', v.karaoke], ['official', v.official]].filter(([, id]) => id && isBad(health[id]))
@@ -88,9 +136,17 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
   }
   const managerButtons = (s) => (
     <span className="flex flex-wrap items-center gap-2 justify-end">
+      {explicitBadge(s)}
       {problems(s).map(([kind, id]) => (
-        <span key={kind} className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${health[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
-          ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {health[id] === 'missing' ? 'gone' : 'blocked'}
+        <span key={kind} className="inline-flex items-center gap-1">
+          <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${health[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
+            ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {health[id] === 'missing' ? 'gone' : 'blocked'}
+          </span>
+          {HAS_SERVER && (
+            <span role="button" className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900 cursor-pointer hover:bg-sky-200" onClick={(e) => { e.stopPropagation(); openAlt(s, kind) }}>
+              🔄 Find another
+            </span>
+          )}
         </span>
       ))}
       {!versionsOf(s).karaoke && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'karaoke') }}>＋🎤 karaoke</span>}
@@ -123,6 +179,22 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                   : '✅ Every video can be played here'}
             </span>
             <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={onRecheck} disabled={checking}>🔍 Re-check now</button>
+            {HAS_SERVER && library.some((s) => problems(s).length) && (
+              <button className="big-btn !py-1 !px-3 !text-sm bg-sky-200 text-sky-900" onClick={autoFix}>🔄 Replace all blocked videos</button>
+            )}
+            {fixMsg && <span className="text-sm font-semibold">{fixMsg}</span>}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+            <span className="font-semibold">
+              {scanning
+                ? 'Scanning lyrics for explicit words…'
+                : `🔞 ${library.filter((s) => scan[s.videoId]?.s === 'strong').length} song(s) with strong language, ${library.filter((s) => scan[s.videoId]?.s === 'mild').length} with mild words (shown as [bloop] on screen).`}
+            </span>
+            <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={onRescan} disabled={scanning}>🧼 Re-scan lyrics</button>
+            <label className="flex items-center gap-2 font-semibold">
+              <input type="checkbox" className="h-5 w-5" checked={hideExplicit} onChange={(e) => onHideExplicit?.(e.target.checked)} />
+              Hide songs with strong language from kids
+            </label>
           </div>
         </div>
       )}
@@ -244,6 +316,29 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
           </button>
         ))}
       </div>
+      )}
+
+      {alt && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setAlt(null)}>
+          <div className="card w-full max-w-2xl max-h-[85vh] overflow-y-auto space-y-3" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-sky-800">🔄 Another {alt.kind === 'karaoke' ? 'karaoke' : 'original'} video for “{alt.song.title}”</h3>
+            {alt.loading && <p>Searching…</p>}
+            {alt.error && <p className="text-rose-700 font-semibold">{alt.error}</p>}
+            <ul className="space-y-2">
+              {alt.results.map((r) => (
+                <li key={r.videoId}>
+                  <button className="flex w-full items-center gap-3 rounded-xl bg-slate-100 p-2 text-left hover:bg-sky-100" onClick={() => pickAlt(r.videoId)}>
+                    <img alt="" src={`https://i.ytimg.com/vi/${r.videoId}/default.jpg`} className="h-12 w-16 rounded object-cover" />
+                    <span className="min-w-0 flex-1 text-sm">{r.title}</span>
+                    {r.good && <span className="shrink-0 rounded-full bg-green-200 px-2 py-0.5 text-xs font-bold text-green-900">looks right</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {!alt.loading && !alt.error && alt.results.length === 0 && <p>No embeddable results found.</p>}
+            <button className="underline text-sm" onClick={() => setAlt(null)}>Cancel</button>
+          </div>
+        </div>
       )}
 
       {chosen && (
