@@ -2,6 +2,7 @@
 create table if not exists public.songs (
   video_id   text primary key,
   title      text not null,
+  artist     text,
   created_at timestamptz not null default now()
 );
 
@@ -18,3 +19,6 @@ create policy "signed-in users can update"
   on public.songs for update to authenticated using (true) with check (true);
 create policy "signed-in users can delete"
   on public.songs for delete to authenticated using (true);
+
+-- Already ran an older version of this file? Add the artist column with:
+--   alter table public.songs add column if not exists artist text;

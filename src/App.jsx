@@ -19,7 +19,8 @@ export default function App() {
   const [started, setStarted] = useState(false)
   const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'add' | null
   const [picking, setPicking] = useState(false)
-  const { library, save: saveLibrary, reload, error: libraryError, seed, usingDb } = useLibrary()
+  const [adminMode, setAdminMode] = useState(false) // lets you remove songs from the picker
+  const { library, save: saveLibrary, reload, error: libraryError, missingStarters, addStarters, usingDb } = useLibrary()
   const auth = useAuth()
   const canEdit = !usingDb || !!auth.session
   const [autoNext, setAutoNext] = useState(true)
@@ -32,7 +33,7 @@ export default function App() {
     add: (song) =>
       update((s) => (s.current ? { ...s, queue: [...s.queue, song] } : { ...s, current: song })),
     addFromLibrary: (song, singer) => {
-      actions.add({ id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), videoId: song.videoId, title: song.title, singer, lyrics: '' })
+      actions.add({ id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), videoId: song.videoId, title: song.title, artist: song.artist, singer, lyrics: '' })
       setPicking(false)
     },
     remove: (id) => update((s) => ({ ...s, queue: s.queue.filter((q) => q.id !== id) })),
@@ -184,7 +185,7 @@ export default function App() {
           </div>
           {panel === 'add' && (
             <>
-              <LibraryAdmin library={library} save={saveLibrary} auth={auth} usingDb={usingDb} canEdit={canEdit} dbError={libraryError} seed={seed} />
+              <LibraryAdmin library={library} save={saveLibrary} auth={auth} usingDb={usingDb} canEdit={canEdit} dbError={libraryError} missingStarters={missingStarters} addStarters={addStarters} />
               <AddSongForm onAdd={actions.add} onSaveToLibrary={!canEdit ? undefined : (s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />
               {phoneUrl && (
                 <div className="card text-center">
@@ -204,13 +205,20 @@ export default function App() {
           <div className="max-w-[1400px] mx-auto">
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-3xl sm:text-5xl font-bold text-white drop-shadow mr-auto">🎵 Pick a song!</h2>
+              <button className={`big-btn !text-xl ${adminMode ? 'bg-rose-500 text-white' : 'bg-white/30 text-white'}`} onClick={() => setAdminMode((a) => !a)}>
+                🛠️ Admin {adminMode ? 'on' : 'off'}
+              </button>
               <button className="big-btn !text-xl bg-yellow-300 text-violet-800" onClick={() => { setPicking(false); setPanel('add') }}>➕ Add a song</button>
-              <button className="big-btn !text-2xl bg-white text-violet-700" onClick={() => setPicking(false)}>✖ Close</button>
+              <button className="big-btn !text-2xl bg-white text-violet-700" onClick={() => { setPicking(false); setAdminMode(false) }}>✖ Close</button>
             </div>
             <SongPicker
               library={library}
               queuedIds={[current, ...queue].filter(Boolean).map((s) => s.videoId)}
               onPick={actions.addFromLibrary}
+              admin={adminMode}
+              onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
+              adminNeedsSignIn={!canEdit ? auth : null}
+              dbError={libraryError}
             />
           </div>
         </div>

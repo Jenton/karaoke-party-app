@@ -3,7 +3,7 @@ import { HAS_SERVER } from '../lib/env.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 
 // Build the curated song list from YouTube search, a playlist, or a pasted link.
-function SignIn({ auth }) {
+export function SignIn({ auth }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [msg, setMsg] = useState('')
@@ -22,7 +22,7 @@ function SignIn({ auth }) {
   )
 }
 
-export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = true, dbError, seed }) {
+export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = true, dbError, missingStarters = [], addStarters }) {
   const [enabled, setEnabled] = useState(null) // is a YouTube API key configured?
   const [mode, setMode] = useState(HAS_SERVER ? 'search' : 'link')
   const [query, setQuery] = useState('kidz bop karaoke')
@@ -32,6 +32,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const [error, setError] = useState('')
   const [link, setLink] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
+  const [linkArtist, setLinkArtist] = useState('')
 
   useEffect(() => {
     if (!HAS_SERVER) return
@@ -52,7 +53,9 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
 
   const have = new Set(library.map((s) => s.videoId))
   const add = (items) => {
-    const fresh = items.filter((i) => !have.has(i.videoId)).map((i) => ({ videoId: i.videoId, title: displayTitle(i.title) }))
+    const fresh = items
+      .filter((i) => !have.has(i.videoId))
+      .map((i) => ({ videoId: i.videoId, title: i.artist !== undefined ? i.title : displayTitle(i.title), ...(i.artist ? { artist: i.artist } : {}) }))
     if (fresh.length) save([...library, ...fresh])
   }
 
@@ -77,8 +80,8 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
     if (!videoId) return setError("That doesn't look like a YouTube link.")
     if (!linkTitle.trim()) return setError('Give it a title.')
     if (have.has(videoId)) return setError('That song is already in the library.')
-    add([{ videoId, title: linkTitle.trim() }])
-    setLink(''); setLinkTitle(''); setError('')
+    add([{ videoId, title: linkTitle.trim(), artist: linkArtist.trim() }])
+    setLink(''); setLinkTitle(''); setLinkArtist(''); setError('')
   }
 
   const rename = (s) => {
@@ -110,8 +113,10 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
         </p>
       )}
       {dbError && <p className="text-amber-700 text-sm">{dbError}</p>}
-      {usingDb && library.length === 0 && seed && (
-        <button className="big-btn !py-2 w-full bg-green-500 text-white" onClick={seed}>Copy the starter songs into the database</button>
+      {usingDb && missingStarters.length > 0 && addStarters && (
+        <button className="big-btn !py-2 w-full bg-green-500 text-white" onClick={addStarters}>
+          ＋ Add {missingStarters.length} starter songs to the library
+        </button>
       )}
 
       {HAS_SERVER ? (
@@ -145,6 +150,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
             <img alt="" src={`https://i.ytimg.com/vi/${parseYouTubeId(link)}/mqdefault.jpg`} className="w-40 rounded-lg" />
           )}
           <input className="field" placeholder="Song title (filled in automatically if possible)" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
+          <input className="field" placeholder="Artist (optional, helps find lyrics)" value={linkArtist} onChange={(e) => setLinkArtist(e.target.value)} />
           <button className="big-btn !py-2 w-full bg-pink-500 text-white">Add to library</button>
         </form>
       )}
@@ -177,7 +183,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
           <ul className="space-y-1 mt-2 max-h-72 overflow-y-auto">
             {library.map((s) => (
               <li key={s.videoId} className="flex items-center gap-2 text-sm">
-                <span className="flex-1 truncate">{s.title}</span>
+                <span className="flex-1 truncate">{s.title}{s.artist ? ` · ${s.artist}` : ''}</span>
                 <button aria-label="Rename" onClick={() => rename(s)}>✏️</button>
                 <button aria-label="Remove" onClick={() => save(library.filter((x) => x.videoId !== s.videoId))}>🗑️</button>
               </li>

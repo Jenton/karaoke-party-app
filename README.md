@@ -22,7 +22,7 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the ➕ Add songs panel, then `git add public/library.json`, commit and push.
 
-Without the database, the library ships with 7 KIDZ BOP karaoke videos found via web search (not yet checked for embedding), so the picker isn't empty; import the full playlist for more.
+The starter library (`public/library.json`) has 7 KIDZ BOP karaoke videos plus 20 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
 
 ## Shared song database (Supabase): same list at any location
 
@@ -38,14 +38,15 @@ public page shows the same list on any laptop at any location with no git push, 
 5. Locally: put them in `.env` as `VITE_SUPABASE_URL=` and `VITE_SUPABASE_ANON_KEY=` and restart `npm run dev`.
    For the public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** tab → add repository variables
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
-6. Open the app → ➕ Add songs, sign in with the user from step 3, and click **Copy the starter songs into the database** (first time only).
+6. Open the app → ➕ Add songs, sign in with the user from step 3, and click **＋ Add N starter songs to the library** (first time only; it only adds songs that aren't in the database yet).
+   Already created the table before the `artist` column existed? Run `alter table public.songs add column if not exists artist text;` in the SQL Editor (the app keeps working without it, it just won't save artists).
 
 After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
 Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the
 Wi-Fi drops at the party the app still shows your songs. The queue itself still lives on the screen's laptop only.
 Do **not** put your YouTube API key or the Supabase "service_role" key in the public variables.
 
-## Adding songs
+## Adding and removing songs
 
 Click **➕ Add songs** in the top bar (or **➕ Add a song** inside the song picker). Anyone can pick songs; adding is open to whoever is signed in on that device (sign in once and it's remembered). **Song library** offers:
 
@@ -55,6 +56,8 @@ Click **➕ Add songs** in the top bar (or **➕ Add a song** inside the song pi
 
 Use **＋** per song or **Add all**. Titles are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"); use
 **Manage saved songs** to rename or remove. The list is saved in `public/library.json`, so it's still there next time (commit it if you like).
+**Removing songs:** open **🎵 Pick a song** and switch **🛠️ Admin** on. Every song gets a 🗑️ button (it asks to confirm). Admin mode needs no password; with the shared database you just need to be signed in once on that device (the sign-in form appears right there if you aren't). Turn Admin off, or close the picker, to go back to picking.
+
 Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily quota is plenty.
 
 ## At the party

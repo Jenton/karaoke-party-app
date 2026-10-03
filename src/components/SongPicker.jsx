@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SignIn } from './LibraryAdmin.jsx'
 
 const SINGERS_KEY = 'karaoke-singers'
 const loadSingers = () => {
@@ -6,7 +7,7 @@ const loadSingers = () => {
 }
 
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
-export default function SongPicker({ library, onPick, queuedIds = [] }) {
+export default function SongPicker({ library, onPick, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
@@ -14,7 +15,7 @@ export default function SongPicker({ library, onPick, queuedIds = [] }) {
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return q ? library.filter((s) => s.title.toLowerCase().includes(q)) : library
+    return q ? library.filter((s) => `${s.title} ${s.artist ?? ''}`.toLowerCase().includes(q)) : library
   }, [library, search])
 
   const confirm = (name) => {
@@ -29,6 +30,15 @@ export default function SongPicker({ library, onPick, queuedIds = [] }) {
 
   return (
     <div>
+      {admin && (
+        <div className="rounded-2xl bg-rose-100 text-rose-900 p-3 mb-4 space-y-2">
+          <p className="font-bold">🛠️ Admin mode: tap 🗑️ on a song to remove it from the library. Turn admin off to pick songs again.</p>
+          {dbError && <p className="text-sm">{dbError}</p>}
+          {adminNeedsSignIn && (
+            <div className="max-w-sm"><SignIn auth={adminNeedsSignIn} /></div>
+          )}
+        </div>
+      )}
       <input
         className="field !text-xl !py-3 mb-4"
         placeholder="🔍 Search songs…"
@@ -44,16 +54,32 @@ export default function SongPicker({ library, onPick, queuedIds = [] }) {
         {shown.map((s) => (
           <button
             key={s.videoId}
-            onClick={() => setChosen(s)}
+            onClick={() => (admin ? undefined : setChosen(s))}
             className="group text-left rounded-2xl bg-white shadow-md overflow-hidden active:scale-95 hover:-translate-y-1 hover:shadow-xl transition"
           >
             <div className="relative aspect-video bg-violet-200">
               <img loading="lazy" alt="" src={`https://i.ytimg.com/vi/${s.videoId}/mqdefault.jpg`} className="w-full h-full object-cover" />
-              {queuedIds.includes(s.videoId) && (
+              {admin && (
+                <span
+                  role="button"
+                  aria-label={`Remove ${s.title}`}
+                  className="absolute top-2 right-2 w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl shadow cursor-pointer hover:bg-rose-700"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (window.confirm(`Remove "${s.title}" from the library?`)) onRemove?.(s)
+                  }}
+                >
+                  🗑️
+                </span>
+              )}
+              {!admin && queuedIds.includes(s.videoId) && (
                 <span className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">In line ✓</span>
               )}
             </div>
-            <p className="p-3 font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title}</p>
+            <div className="p-3">
+              <p className="font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title}</p>
+              {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}</p>}
+            </div>
           </button>
         ))}
       </div>
@@ -61,7 +87,7 @@ export default function SongPicker({ library, onPick, queuedIds = [] }) {
       {chosen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setChosen(null)}>
           <div className="card w-full max-w-md space-y-3 animate-pop" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-2xl font-bold text-pink-600">🎤 {chosen.title}</h3>
+            <h3 className="text-2xl font-bold text-pink-600">🎤 {chosen.title}{chosen.artist && <span className="block text-base font-normal text-slate-500">{chosen.artist}</span>}</h3>
             <p className="text-lg">Who's singing?</p>
             {singers.length > 0 && (
               <div className="flex flex-wrap gap-2">

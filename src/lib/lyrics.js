@@ -13,8 +13,10 @@ export function cleanTitle(title) {
 }
 
 // Returns a list of candidates: { label, plain, synced }
-export async function findLyrics(title) {
-  const q = cleanTitle(title) || title
+export async function findLyrics(title, artist) {
+  // KIDZ BOP covers aren't in lyrics databases under that name, so only real artists help the search
+  const useArtist = artist && !/kidz\s*bop/i.test(artist)
+  const q = [cleanTitle(title) || title, useArtist ? artist.replace(/\(.*?\)/g, '').trim() : ''].filter(Boolean).join(' ')
   const r = await fetch(
     (HAS_SERVER ? '/api/lyrics?q=' : 'https://lrclib.net/api/search?q=') + encodeURIComponent(q),
   )

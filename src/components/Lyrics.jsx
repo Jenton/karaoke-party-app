@@ -47,7 +47,7 @@ export default function Lyrics({ song, getTime, onChange }) {
     if (!song) return
     setStatus('Searching… 🔍')
     try {
-      const found = await findLyrics(song.title)
+      const found = await findLyrics(song.title, song.artist)
       setMatches(found)
       setMatchIdx(0)
       if (found.length) {

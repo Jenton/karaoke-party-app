@@ -41,7 +41,11 @@ function sanitizeLibrary(list) {
   const seen = new Set()
   return (Array.isArray(list) ? list : [])
     .filter((s) => s && /^[\w-]{11}$/.test(s.videoId) && !seen.has(s.videoId) && seen.add(s.videoId))
-    .map((s) => ({ videoId: s.videoId, title: String(s.title || 'Untitled').slice(0, 120) }))
+    .map((s) => ({
+      videoId: s.videoId,
+      title: String(s.title || 'Untitled').slice(0, 120),
+      ...(s.artist ? { artist: String(s.artist).slice(0, 100) } : {}),
+    }))
 }
 
 export function partyApi(env = {}) {
