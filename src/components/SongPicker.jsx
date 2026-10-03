@@ -37,7 +37,7 @@ export default function SongPicker({ library, onPick, queuedIds = [] }) {
       />
       {library.length === 0 && (
         <p className="text-lg text-slate-600 text-center py-10">
-          No songs yet! Grown-ups: tap <b>🔧 Grown-ups</b> to build the song list.
+          No songs yet! Tap <b>➕ Add a song</b> to start the song list.
         </p>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">

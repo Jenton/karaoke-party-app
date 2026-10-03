@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { HAS_SERVER } from '../lib/env.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 
-// Grown-ups only: build the curated song list from YouTube search, a playlist, or a pasted link.
+// Build the curated song list from YouTube search, a playlist, or a pasted link.
 function SignIn({ auth }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

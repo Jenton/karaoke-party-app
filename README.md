@@ -18,9 +18,9 @@ you just add songs by pasting links.
 Every push to `main` is built and published by `.github/workflows/pages.yml` to
 `https://jenton.github.io/karaoke-party-app/` (one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
 
-The public page is static: it shows the song list from `public/library.json` plus any songs you add with **Paste link** in 🔧 Grown-ups (those are saved in that browser only), finds lyrics directly from LRCLIB, and the
+The public page is static: it shows the song list from `public/library.json` plus any songs you add with **Paste link** in ➕ Add songs (those are saved in that browser only), finds lyrics directly from LRCLIB, and the
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
-To change the list for everyone: build it locally with the Grown-ups panel, then `git add public/library.json`, commit and push.
+To change the list for everyone: build it locally with the ➕ Add songs panel, then `git add public/library.json`, commit and push.
 
 Without the database, the library ships with 7 KIDZ BOP karaoke videos found via web search (not yet checked for embedding), so the picker isn't empty; import the full playlist for more.
 
@@ -38,16 +38,16 @@ public page shows the same list on any laptop at any location with no git push, 
 5. Locally: put them in `.env` as `VITE_SUPABASE_URL=` and `VITE_SUPABASE_ANON_KEY=` and restart `npm run dev`.
    For the public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** tab → add repository variables
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
-6. Open the app → 🔧 Grown-ups, sign in with the user from step 3, and click **Copy the starter songs into the database** (first time only).
+6. Open the app → ➕ Add songs, sign in with the user from step 3, and click **Copy the starter songs into the database** (first time only).
 
 After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
 Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the
 Wi-Fi drops at the party the app still shows your songs. The queue itself still lives on the screen's laptop only.
 Do **not** put your YouTube API key or the Supabase "service_role" key in the public variables.
 
-## Before the party: build the song list (grown-ups)
+## Adding songs
 
-Click **🔧 Grown-ups** → **Song library**:
+Click **➕ Add songs** in the top bar (or **➕ Add a song** inside the song picker). Anyone can pick songs; adding is open to whoever is signed in on that device (sign in once and it's remembered). **Song library** offers:
 
 - **YouTube search** (defaults to "kidz bop karaoke"): results are limited to embeddable, kid-safe (SafeSearch strict) videos.
 - **Playlist**: paste a playlist link or ID (up to 200 videos). It's pre-filled with the official KIDZ BOP Karaoke playlist, so with an API key, click **Load** then **Add all** to import the whole thing.
@@ -61,10 +61,10 @@ Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily 
 
 1. Plug the laptop into the screen, run the app, drag its window to the screen and press F11 for full screen.
 2. Click **Tap to start the party** once (browsers need a click before they allow sound).
-3. The screen is all stage: the video on the left and big lyrics on the right, with who's singing and the next few singers under the video. Everything else is a small button on the top bar: **🎵 Pick a song** (kids tap a song, choose or type their name, and it joins the queue; the first song starts right away), **🎟️ Queue**, **🎚️ Key**, **🔧 Grown-ups**, and **⛶** full screen. Those panels slide in from the side and close again.
+3. The screen is all stage: the video on the left and big lyrics on the right, with who's singing and the next few singers under the video. Everything else is a small button on the top bar: **🎵 Pick a song** (kids tap a song, choose or type their name, and it joins the queue; the first song starts right away), **🎟️ Queue**, **🎚️ Key**, **➕ Add songs**, and **⛶** full screen. Those panels slide in from the side and close again.
 4. **Lyrics are found automatically** (from [LRCLIB](https://lrclib.net), a free lyrics database) when a song starts. Use 🔍 Find lyrics to retry, ↻ Try another if the match is wrong, or ✏️ Edit to paste your own. When timed lyrics exist, the current line is highlighted and scrolls along with the video; use Timing earlier/later if it's off. The laptop needs internet for this.
 5. When a song ends, the next one starts after 3 seconds (toggle **Auto-play next**).
-6. Optional: phones on the same Wi-Fi can open the link shown under 🔧 Grown-ups (`http://<laptop-ip>:5173/?remote`) to pick songs from the library too.
+6. Optional: phones on the same Wi-Fi can open the link shown under ➕ Add songs (`http://<laptop-ip>:5173/?remote`) to pick songs from the library too.
 
 ## Key changer (pitch shift): important
 

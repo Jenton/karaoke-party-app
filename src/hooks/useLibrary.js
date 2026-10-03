@@ -30,7 +30,7 @@ const fromRow = (r) => ({ videoId: r.video_id, title: r.title })
 
 // The curated song list. Where it lives, in order of preference:
 //  1. Supabase database (if VITE_SUPABASE_* is set): shared by every device, same list at any location.
-//     Reads are public; editing needs a grown-up sign-in. The last list is cached for flaky party Wi-Fi.
+//     Reads are public; editing needs a sign-in. The last list is cached for flaky party Wi-Fi.
 //  2. Local dev server: saved into public/library.json.
 //  3. Public static build without a database: public/library.json plus per-browser edits (localStorage).
 export function useLibrary() {

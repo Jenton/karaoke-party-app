@@ -17,7 +17,7 @@ const isRemote = new URLSearchParams(location.search).has('remote')
 export default function App() {
   const [state, update] = useSharedState()
   const [started, setStarted] = useState(false)
-  const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'admin' | null
+  const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'add' | null
   const [picking, setPicking] = useState(false)
   const { library, save: saveLibrary, reload, error: libraryError, seed, usingDb } = useLibrary()
   const auth = useAuth()
@@ -72,7 +72,7 @@ export default function App() {
   const phoneUrl = addresses[0] ? `http://${addresses[0]}:${location.port}/?remote` : null
 
   const openPicker = () => { reload(); setPicking(true) }
-  const togglePanel = (name) => { if (name === 'admin') reload(); setPanel((p) => (p === name ? null : name)) }
+  const togglePanel = (name) => { if (name === 'add') reload(); setPanel((p) => (p === name ? null : name)) }
   const toggleFullscreen = () =>
     document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.()
 
@@ -95,7 +95,7 @@ export default function App() {
         </button>
         {tool('queue', '🎟️ Queue', queue.length ? ` (${queue.length})` : '')}
         {tool('key', semitones ? `🎚️ Key ${semitones > 0 ? '+' : ''}${semitones}` : '🎚️ Key')}
-        {tool('admin', '🔧 Grown-ups')}
+        {tool('add', '➕ Add songs')}
         <button className="rounded-xl px-3 py-2 bg-white/20 text-white hover:bg-white/30" onClick={toggleFullscreen} aria-label="Full screen" title="Full screen">⛶</button>
       </header>
 
@@ -157,7 +157,7 @@ export default function App() {
         <aside className={`${panel ? '' : 'hidden'} fixed inset-y-0 right-0 z-30 w-full sm:w-[440px] overflow-y-auto bg-violet-50 shadow-2xl p-4 space-y-4`}>
           <div className="flex items-center">
             <h2 className="text-xl font-bold text-violet-800 mr-auto">
-              {{ queue: '🎟️ Queue', key: '🎚️ Key changer', admin: '🔧 Grown-ups' }[panel] ?? ''}
+              {{ queue: '🎟️ Queue', key: '🎚️ Key changer', add: '➕ Add songs' }[panel] ?? ''}
             </h2>
             <button className="rounded-lg px-3 py-1 bg-white font-bold" onClick={() => setPanel(null)}>✖ Close</button>
           </div>
@@ -173,7 +173,7 @@ export default function App() {
           <div className={panel === 'key' ? '' : 'hidden'}>
             <PitchControls semitones={semitones} onChange={setSemitones} />
           </div>
-          {panel === 'admin' && (
+          {panel === 'add' && (
             <>
               <LibraryAdmin library={library} save={saveLibrary} auth={auth} usingDb={usingDb} canEdit={canEdit} dbError={libraryError} seed={seed} />
               <AddSongForm onAdd={actions.add} onSaveToLibrary={!canEdit ? undefined : (s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />
@@ -194,6 +194,7 @@ export default function App() {
           <div className="max-w-[1400px] mx-auto">
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-3xl sm:text-5xl font-bold text-white drop-shadow mr-auto">🎵 Pick a song!</h2>
+              <button className="big-btn !text-xl bg-yellow-300 text-violet-800" onClick={() => { setPicking(false); setPanel('add') }}>➕ Add a song</button>
               <button className="big-btn !text-2xl bg-white text-violet-700" onClick={() => setPicking(false)}>✖ Close</button>
             </div>
             <SongPicker

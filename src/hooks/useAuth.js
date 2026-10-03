@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 
-// Grown-up sign-in for editing the song library (only used when the database is configured).
+// Sign-in for editing the song library (only used when the database is configured).
 export function useAuth() {
   const [session, setSession] = useState(null)
 
