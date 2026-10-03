@@ -154,7 +154,16 @@ export default function App() {
       {/* secondary tools slide in from the side and can be closed */}
       {/* always mounted (just hidden) so the key changer keeps running while the panel is closed */}
       {(
-        <aside className={`${panel ? '' : 'hidden'} fixed inset-y-0 right-0 z-30 w-full sm:w-[440px] overflow-y-auto bg-violet-50 shadow-2xl p-4 space-y-4`}>
+        <>
+        <div
+          className={`fixed inset-0 z-20 bg-black/40 transition-opacity duration-300 ${panel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          onClick={() => setPanel(null)}
+        />
+        <aside
+          aria-hidden={!panel}
+          className={`fixed inset-y-0 right-0 z-30 w-full sm:w-[440px] overflow-y-auto bg-violet-50 shadow-2xl p-4 space-y-4 transition-transform duration-300 ease-out ${panel ? 'translate-x-0' : 'translate-x-full invisible'}`}
+          style={{ transitionProperty: 'transform, visibility' }}
+        >
           <div className="flex items-center">
             <h2 className="text-xl font-bold text-violet-800 mr-auto">
               {{ queue: '🎟️ Queue', key: '🎚️ Key changer', add: '➕ Add songs' }[panel] ?? ''}
@@ -187,6 +196,7 @@ export default function App() {
             </>
           )}
         </aside>
+        </>
       )}
 
       {picking && (
