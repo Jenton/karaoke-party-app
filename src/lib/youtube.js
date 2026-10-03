@@ -34,3 +34,13 @@ export function loadYouTubeApi() {
   }
   return apiPromise
 }
+
+// "KIDZ BOP Kids - Flowers (Karaoke Version) [Lyrics]" -> "Flowers"
+export function displayTitle(raw) {
+  const t = raw
+    .replace(/[([{].*?[)\]}]/g, ' ')
+    .replace(/\b(kidz\s*bop(\s*kids)?|karaoke|instrumental|version|official|video|lyrics|audio|sing[\s-]?along|with)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–|:]+|[\s\-–|:]+$/g, '')
+  return t || raw
+}

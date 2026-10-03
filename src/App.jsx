@@ -5,6 +5,9 @@ import AddSongForm from './components/AddSongForm.jsx'
 import Queue from './components/Queue.jsx'
 import Lyrics from './components/Lyrics.jsx'
 import PitchControls from './components/PitchControls.jsx'
+import SongPicker from './components/SongPicker.jsx'
+import LibraryAdmin from './components/LibraryAdmin.jsx'
+import { useLibrary } from './hooks/useLibrary.js'
 import RemoteView from './components/RemoteView.jsx'
 
 const isRemote = new URLSearchParams(location.search).has('remote')
@@ -12,7 +15,9 @@ const isRemote = new URLSearchParams(location.search).has('remote')
 export default function App() {
   const [state, update] = useSharedState()
   const [started, setStarted] = useState(false)
-  const [tvMode, setTvMode] = useState(false)
+  const [admin, setAdmin] = useState(false)
+  const [picking, setPicking] = useState(false)
+  const { library, save: saveLibrary, reload } = useLibrary()
   const [autoNext, setAutoNext] = useState(true)
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
@@ -22,6 +27,10 @@ export default function App() {
   const actions = {
     add: (song) =>
       update((s) => (s.current ? { ...s, queue: [...s.queue, song] } : { ...s, current: song })),
+    addFromLibrary: (song, singer) => {
+      actions.add({ id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), videoId: song.videoId, title: song.title, singer, lyrics: '' })
+      setPicking(false)
+    },
     remove: (id) => update((s) => ({ ...s, queue: s.queue.filter((q) => q.id !== id) })),
     moveUp: (id) =>
       update((s) => {
@@ -53,7 +62,7 @@ export default function App() {
     if (autoNext) setTimeout(actions.next, 3000)
   }
 
-  if (isRemote) return <RemoteView state={state} actions={actions} />
+  if (isRemote) return <RemoteView state={state} actions={actions} library={library} />
 
   const phoneUrl = addresses[0] ? `http://${addresses[0]}:${location.port}/?remote` : null
 
@@ -65,8 +74,11 @@ export default function App() {
           <input type="checkbox" className="w-5 h-5" checked={autoNext} onChange={(e) => setAutoNext(e.target.checked)} />
           Auto-play next
         </label>
-        <button className="big-btn bg-white text-violet-700" onClick={() => setTvMode((t) => !t)}>
-          {tvMode ? '🛠️ Show controls' : '📺 TV mode'}
+        <button className="big-btn !text-2xl !px-8 bg-yellow-300 text-violet-800 animate-float" onClick={() => { reload(); setPicking(true) }}>
+          🎵 Pick a song!
+        </button>
+        <button className="big-btn bg-white text-violet-700" onClick={() => { reload(); setAdmin((a) => !a) }}>
+          🔧 Grown-ups
         </button>
       </header>
 
@@ -104,9 +116,10 @@ export default function App() {
 
         <aside className="space-y-4">
           <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} />
-          {!tvMode && <AddSongForm onAdd={actions.add} />}
           <PitchControls semitones={semitones} onChange={setSemitones} />
-          {!tvMode && phoneUrl && (
+          {admin && <LibraryAdmin library={library} save={saveLibrary} />}
+          {admin && <AddSongForm onAdd={actions.add} onSaveToLibrary={(s) => saveLibrary([...library.filter((x) => x.videoId !== s.videoId), s])} />}
+          {admin && phoneUrl && (
             <div className="card text-center">
               <p className="font-bold text-violet-700">📱 Add songs from a phone</p>
               <p className="text-sm text-slate-600">Same Wi-Fi, then open:</p>
@@ -115,6 +128,22 @@ export default function App() {
           )}
         </aside>
       </div>
+
+      {picking && (
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-gradient-to-br from-violet-600 via-pink-600 to-orange-500 p-4 sm:p-8">
+          <div className="max-w-[1400px] mx-auto">
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-3xl sm:text-5xl font-bold text-white drop-shadow mr-auto">🎵 Pick a song!</h2>
+              <button className="big-btn !text-2xl bg-white text-violet-700" onClick={() => setPicking(false)}>✖ Close</button>
+            </div>
+            <SongPicker
+              library={library}
+              queuedIds={[current, ...queue].filter(Boolean).map((s) => s.videoId)}
+              onPick={actions.addFromLibrary}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
