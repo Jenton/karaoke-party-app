@@ -8,6 +8,7 @@ import LyricsPanel from './components/LyricsPanel.jsx'
 import SeekBar from './components/SeekBar.jsx'
 import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
+import { RETIRED_STARTERS } from './lib/retired.js'
 import { addSinger, clearSingers } from './lib/singers.js'
 import EditableName from './components/EditableName.jsx'
 import PitchControls from './components/PitchControls.jsx'
@@ -34,6 +35,16 @@ export default function App() {
   const auth = useAuth()
   const canEdit = !usingDb || !!auth.session
 
+  // When signed in, remove retired starter songs (the KIDZ BOP ones) from the database, once per device.
+  useEffect(() => {
+    if (!usingDb || !canEdit || !loaded || libraryError) return
+    const FLAG = 'karaoke-retired-v1'
+    if (localStorage.getItem(FLAG)) return
+    const stale = library.filter((s) => RETIRED_STARTERS.includes(s.videoId))
+    if (!stale.length) return localStorage.setItem(FLAG, '1')
+    saveLibrary(library.filter((s) => !RETIRED_STARTERS.includes(s.videoId))).then((ok) => ok && localStorage.setItem(FLAG, '1'))
+  }, [usingDb, canEdit, loaded, libraryError, library, saveLibrary])
+
   // When signed in, put starter songs we haven't offered yet into the database for you. We remember which starters
   // were already offered on this device, so songs you remove don't come back; only genuinely new starters are added.
   useEffect(() => {
@@ -53,7 +64,8 @@ export default function App() {
   const [addresses, setAddresses] = useState([])
   const player = useRef(null)
   const [playing, setPlaying] = useState(false)
-  const [playerError, setPlayerError] = useState(false)
+  const [playerError, setPlayerError] = useState(null) // YouTube error code, or null
+  const [needsTap, setNeedsTap] = useState(false) // the browser/YouTube didn't start the video by itself
   // the visualizer is the default; the video keeps playing (and supplying the sound) underneath it
   const [stageMode, setStageMode] = useState(() => {
     try { return localStorage.getItem('karaoke-stage-mode') === 'video' ? 'video' : 'visualizer' } catch { return 'visualizer' }
@@ -149,13 +161,22 @@ export default function App() {
   }, [current?.id, started])
 
   // each new song starts in its original key
-  useEffect(() => { setSemitones(0); setPlayerError(false) }, [current?.id])
+  useEffect(() => { setSemitones(0); setPlayerError(null); setNeedsTap(false) }, [current?.id])
 
   // the video can't be seen in visualizer mode, so say so (and move on) when YouTube refuses to play it
-  const onPlayerError = () => {
-    setPlayerError(true)
-    setTimeout(() => { setPlayerError(false); actions.next() }, 3500)
+  const onPlayerError = (code) => {
+    setPlayerError(code ?? -1)
+    // move on automatically if someone is waiting; otherwise stay put so the message isn't missed
+    if (queue.length) setTimeout(() => { setPlayerError(null); actions.next() }, 3500)
   }
+
+  // safety net: if the song still isn't playing a few seconds after its countdown, ask for a tap
+  // (a tap counts as a user gesture, which browsers require before they will start playback)
+  useEffect(() => {
+    if (isRemote || !current || !started || holding || playerError != null || playing) { setNeedsTap(false); return }
+    const id = setTimeout(() => setNeedsTap(true), 4000)
+    return () => clearTimeout(id)
+  }, [current?.id, started, holding, playerError, playing])
 
   useEffect(() => {
     if (!HAS_SERVER) return
@@ -230,7 +251,7 @@ export default function App() {
         <div className={`${stageWidth} relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl`}>
           <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} />
           {stageMode === 'visualizer' && (
-            <div className="absolute inset-0 z-[5]">
+            <div className="absolute inset-0 z-[5] bg-[#1a0b2e]">
               <Visualizer playing={playing} />
             </div>
           )}
@@ -251,10 +272,28 @@ export default function App() {
               </div>
             </div>
           )}
-          {playerError && (
+          {playerError != null && (
             <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/90 text-white text-center p-6">
-              <p className="text-2xl sm:text-4xl font-bold">😕 This video can't be played here. Skipping…</p>
+              <div className="max-w-2xl">
+                <p className="text-2xl sm:text-4xl font-bold">😕 {playerError === 100 ? 'This video was removed or is private.' : playerError === 101 || playerError === 150 ? "This video's owner doesn't allow it to play here." : "This video can't be played."}</p>
+                {queue.length ? (
+                  <p className="mt-3 text-lg sm:text-2xl opacity-80">Skipping to the next song…</p>
+                ) : (
+                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                    <button className="big-btn bg-yellow-300 text-violet-800" onClick={openPicker}>🎵 Pick another song</button>
+                    <button className="big-btn bg-white/20 text-white" onClick={() => { setPlayerError(null); actions.next() }}>Remove this song</button>
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+          {needsTap && playerError == null && !holding && (
+            <button
+              onClick={() => { player.current?.forcePlay(); setNeedsTap(false) }}
+              className="absolute inset-0 z-20 grid place-items-center bg-violet-900/80 text-white text-3xl sm:text-6xl font-extrabold hover:bg-violet-800/80 transition"
+            >
+              ▶ Tap to play
+            </button>
           )}
           {!started && (
             <button

@@ -74,7 +74,7 @@ export function useLibrary() {
           }
           const { data, error: err } = res
           if (err) throw err
-          const list = data.map(fromRow).map((s) => ({ ...meta.current.get(s.videoId), ...s }))
+          const list = data.map(fromRow).map((s) => ({ ...s, ...meta.current.get(s.videoId) }))
           dbOk.current = true
           writeJson(CACHE_KEY, list)
           setLibrary(list)
@@ -101,7 +101,7 @@ export function useLibrary() {
     // the bundled list first (so artists can be filled in), then the database
     const start = supabase ? loadFile().catch(() => []) : Promise.resolve([])
     start.then((list) => {
-      meta.current = new Map(list.map((s) => [s.videoId, { artist: s.artist, genre: s.genre }]))
+      meta.current = new Map(list.map((s) => [s.videoId, { ...(s.artist ? { artist: s.artist } : {}), ...(s.genre ? { genre: s.genre } : {}) }]))
       setStarters(list)
       reload()
     })

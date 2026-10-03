@@ -24,6 +24,14 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
       const p = player.current
       if (p?.getCurrentTime) p.seekTo(Math.max(0, p.getCurrentTime() + sec), true)
     },
+    // reload and play from a user tap (works when the browser blocked the automatic start)
+    forcePlay: () => {
+      const p = player.current
+      if (p?.loadVideoById && latest.current.videoId) {
+        loadedId.current = latest.current.videoId
+        p.loadVideoById(latest.current.videoId)
+      }
+    },
     getDuration: () => player.current?.getDuration?.() ?? 0,
     togglePlay: () => {
       const p = player.current

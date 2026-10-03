@@ -117,7 +117,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
               >
                 <span className="min-w-0 flex-1">
                   <span className="block font-bold text-lg sm:text-xl leading-tight truncate">{s.title}</span>
-                  {s.artist && <span className="block text-sm sm:text-base text-slate-500 truncate">{s.artist}</span>}
+                  {s.artist && <span className="block text-sm sm:text-base text-slate-500 truncate">{s.artist}{/karaoke/i.test(s.genre || '') ? ' · karaoke version' : ''}</span>}
                 </span>
                 {!admin && queuedIds.includes(s.videoId) && (
                   <span className="shrink-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">In line ✓</span>
@@ -178,7 +178,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
             </div>
             <div className="p-3">
               <p className="font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title}</p>
-              {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}</p>}
+              {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}{/karaoke/i.test(s.genre || '') ? ' · karaoke version' : ''}</p>}
               {!admin && onQuickAdd && (
                 <span
                   role="button"

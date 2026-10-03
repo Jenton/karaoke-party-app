@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { findLyrics, parseLrc } from '../lib/lyrics.js'
+import { findLyrics, lyricsArtist, parseLrc } from '../lib/lyrics.js'
 
 // Lyrics state for the current song: auto-lookup, alternatives, timing offset, text size.
 export function useLyrics(song, onChange) {
@@ -17,13 +17,13 @@ export function useLyrics(song, onChange) {
     if (!song) return
     setStatus('Searching… 🔍')
     try {
-      const found = await findLyrics(song.title, song.artist)
+      const { matches: found, masked } = await findLyrics(song.title, song.artist)
       setMatches(found)
       setMatchIdx(0)
       if (found.length) {
         apply(found[0])
-        setStatus(`Found: ${found[0].label}`)
-      } else setStatus('No lyrics found. Try editing the song title, or paste them yourself.')
+        setStatus(`Found: ${found[0].label}${masked ? ' (explicit words are shown as [bloop])' : ''}`)
+      } else setStatus('No matching lyrics found. You can paste them yourself.')
     } catch {
       setStatus("Couldn't reach the lyrics service (is the internet on?).")
     }
@@ -41,7 +41,10 @@ export function useLyrics(song, onChange) {
   // new song: reset, and look up lyrics automatically if it has none
   useEffect(() => {
     setMatches([]); setMatchIdx(0); setStatus(''); setOffset(0)
-    if (song && !song.lyrics?.trim()) search()
+    if (!song || song.lyrics?.trim()) return
+    // without a real artist the lookup is a guess (KIDZ BOP covers), so wait for the host to ask
+    if (lyricsArtist(song.artist)) search()
+    else setStatus('No artist for this song, so lyrics are not looked up automatically. Tap Find lyrics to try, or paste your own.')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song?.id])
 

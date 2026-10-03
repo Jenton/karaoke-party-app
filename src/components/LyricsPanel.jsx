@@ -40,7 +40,7 @@ export default function LyricsPanel({ lyrics, onChange }) {
           value={song?.lyrics ?? ''}
           onChange={(e) => onChange({ lyrics: e.target.value, synced: '' })}
         />
-        <p className="text-xs text-slate-500 mt-1">Typing here replaces the timed lyrics with plain text that scrolls along with the song.</p>
+        <p className="text-xs text-slate-500 mt-1">Typing here replaces the timed lyrics with plain text that scrolls along with the song. On the stage, explicit words are always shown as [bloop].</p>
       </div>
     </section>
   )

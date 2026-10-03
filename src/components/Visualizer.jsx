@@ -29,16 +29,16 @@ export default function Visualizer({ playing }) {
     // a few tiny specks that drift upward very slowly
     const specks = Array.from({ length: 22 }, () => ({ x: Math.random(), y: Math.random(), s: 0.5 + Math.random(), v: 0.004 + Math.random() * 0.01 }))
 
+    let lastMs = 0
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       c.width = c.clientWidth * dpr
-      c.height = c.clientHeight * dpr
+      c.height = c.clientHeight * dpr // resizing a canvas clears it, so repaint right away (below)
+      if (lastMs) draw(lastMs)
     }
-    resize()
-    const ro = new ResizeObserver(resize)
-    ro.observe(c)
 
-    const frame = (ms) => {
+    const draw = (ms) => {
+      lastMs = ms
       const t = ms / 1000
       const w = c.width, h = c.height, m = Math.min(w, h)
       energy += ((live.current ? 1 : 0.2) - energy) * 0.03
@@ -123,12 +123,20 @@ export default function Visualizer({ playing }) {
       v.addColorStop(1, 'rgba(0,0,0,0.45)')
       ctx.fillStyle = v
       ctx.fillRect(0, 0, w, h)
+    }
 
+    const frame = (ms) => {
+      draw(ms)
       raf = requestAnimationFrame(frame)
     }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(c)
     raf = requestAnimationFrame(frame)
     return () => { cancelAnimationFrame(raf); ro.disconnect() }
   }, [])
 
-  return <canvas ref={canvas} className="absolute inset-0 w-full h-full" />
+  // solid background colour behind the canvas: if the canvas is ever blank for a frame (e.g. mid-resize),
+  // you see this, never the music video underneath
+  return <canvas ref={canvas} className="absolute inset-0 w-full h-full bg-[#1a0b2e]" />
 }
