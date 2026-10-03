@@ -125,7 +125,7 @@ export default function LyricsOverlay({ lyrics, getTime, getDuration }) {
     return (
       <div
         ref={panel}
-        className="absolute right-[2%] top-[3%] bottom-[3%] z-10 w-[46%] overflow-y-auto rounded-3xl bg-black/60 px-5 py-4 text-center font-bold leading-snug whitespace-pre-wrap text-yellow-100"
+        className="absolute right-[2%] top-[3%] bottom-[3%] z-[14] w-[46%] overflow-y-auto rounded-3xl bg-black/60 px-5 py-4 text-center font-bold leading-snug whitespace-pre-wrap text-yellow-100"
         style={{ fontSize: size(sizeIdx, 0.75), ...outline }}
       >
         {censor(song.lyrics)}

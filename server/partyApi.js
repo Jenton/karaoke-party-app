@@ -116,6 +116,16 @@ export function partyApi(env = {}) {
     'GET /api/youtube/check': async (_req, q) => {
       const ids = (q.get('ids') || '').split(',').filter((i) => /^[\w-]{11}$/.test(i)).slice(0, 200)
       const out = Object.fromEntries(ids.map((i) => [i, 'missing']))
+      if (!key) {
+        // no API key: YouTube's oEmbed endpoint refuses videos that can't be embedded (401) or don't exist (404)
+        await Promise.all(ids.map(async (id) => {
+          try {
+            const r = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + id)}`)
+            out[id] = r.ok ? 'ok' : r.status === 404 ? 'missing' : r.status === 401 || r.status === 403 ? 'blocked' : 'unknown'
+          } catch { out[id] = 'unknown' }
+        }))
+        return out
+      }
       for (let i = 0; i < ids.length; i += 50) {
         const json = await yt('videos', { part: 'status', id: ids.slice(i, i + 50).join(','), maxResults: 50 })
         for (const v of json.items || []) out[v.id] = v.status?.embeddable && v.status?.privacyStatus !== 'private' ? 'ok' : 'blocked'
@@ -149,7 +159,7 @@ export function partyApi(env = {}) {
       return res.end(JSON.stringify({ error: 'not found' }))
     }
     try {
-      if (url.pathname.startsWith('/api/youtube/') && url.pathname !== '/api/youtube/status' && !key) {
+      if (url.pathname.startsWith('/api/youtube/') && !['/api/youtube/status', '/api/youtube/check'].includes(url.pathname) && !key) {
         throw Object.assign(new Error('No YOUTUBE_API_KEY set in .env'), { status: 400 })
       }
       res.end(JSON.stringify(await handler(req, url.searchParams)))

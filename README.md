@@ -22,7 +22,7 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
 
-The starter library (`public/library.json`) has 12 popular songs, each with a **karaoke** and an **original** video (`karaokeId` / `officialId`), plus artist and category. The video IDs came from an AI assistant and haven't been verified: use **🔍 Check that every video can play** in the manager (see below). On the first sign-in on a device the app **replaces the whole shared library with this starter list** (a one-off reset); after that it only adds starter songs it hasn't offered yet.
+The starter library (`public/library.json`) has 12 popular songs, each with a **karaoke** and an **original** video (`karaokeId` / `officialId`), plus artist and category. The video IDs were found by searching for each title (not by guessing), but nothing can confirm from outside a browser that every one allows embedding; the app checks that itself (see below). On the first sign-in on a device the app **replaces the whole shared library with this starter list** (a one-off reset); after that it only adds starter songs it hasn't offered yet.
 
 ## Shared song database (Supabase): same list at any location
 
@@ -49,7 +49,15 @@ Do **not** put your YouTube API key or the Supabase "service_role" key in the pu
 
 Each song can have both a karaoke video and the original. They are **one entry** in the library, not two. In the picker the **Play: 🎤 Karaoke / 🎬 Original** switch sets the default for everything you add (karaoke is the default), and each song has its own small switch to override it. Once a song is queued or playing, the same switch appears in the **Queue** panel and under the stage so you can flip it any time (it restarts the song on the other video). If a video refuses to play (for example the original isn't allowed to be embedded), the app automatically switches to the other version and says so.
 
-**"Can't play outside the YouTube app" / "Playback on other websites has been disabled":** the video's owner has switched off embedding, which is common for official music-video uploads from labels. The fixes: use the **karaoke** version (karaoke channels usually allow embedding), swap in a different upload of the same song, or just let the automatic fallback pick the other version. In the manager, **🔍 Check that every video can play** marks any video that can't be embedded (✔ with an API key it asks YouTube directly; otherwise it uses YouTube's oEmbed check) so you can replace them before the party.
+**"Can't play outside the YouTube app" / "Playback on other websites has been disabled":** the video's owner has switched off embedding, which is common for official music-video uploads from labels. You don't have to check videos by hand, the app handles it:
+
+1. **Automatic health check:** in the background (on load, when the library changes, then cached for hours) the app asks YouTube whether each video exists and may be embedded (the laptop version uses your API key if there is one, otherwise YouTube's oEmbed check; the public page asks from the browser).
+2. **It steers around bad videos:** if the preferred version is blocked, the other one is used; a version known to be blocked is greyed out in the switch; a song with no working video is hidden from the kids' picker.
+3. **It learns while playing:** if a video still fails at play time, the app switches to the other version, remembers the failure, and avoids that video from then on.
+4. **You still see everything in the manager:** blocked or removed videos are flagged ⚠️ automatically, with **🔍 Re-check now**. Replace those at your leisure.
+5. Karaoke uploads (Sing King and similar) almost always allow embedding, which is why karaoke is the default.
+
+Click the stage (video or visualizer) to pause/play; Space does the same.
 
 ## Adding and managing songs (all in the song picker)
 

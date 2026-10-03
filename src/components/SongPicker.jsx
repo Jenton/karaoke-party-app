@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addSinger, clearSingers, getSingers, onSingersChange, removeSinger } from '../lib/singers.js'
 import { GROUPS, genreGroup } from '../lib/genres.js'
-import { hasBoth, resolveVersion, versionsOf } from '../lib/songs.js'
+import { hasBoth, isPlayable, resolveVersion, versionUsable, versionsOf } from '../lib/songs.js'
 import { parseYouTubeId } from '../lib/youtube.js'
-import { checkVideos } from '../lib/checkVideos.js'
+import { isBad } from '../lib/videoHealth.js'
 import VersionToggle from './VersionToggle.jsx'
 
 const VIEW_KEY = 'karaoke-picker-view'
@@ -17,7 +17,7 @@ const loadPref = () => {
 const inCategory = (s, g) => (g === 'Karaoke' ? !!s.karaokeId || genreGroup(s.genre) === 'Karaoke' : genreGroup(s.genre) === g)
 
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
-export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, onSetVersion, dbError = '' }) {
+export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, onSetVersion, health = {}, checking = false, onRecheck, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [view, setViewState] = useState(loadView) // 'grid' (thumbnails) or 'list' (title + artist only)
@@ -33,30 +33,30 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     setOverrides({})
     try { localStorage.setItem(PREF_KEY, v) } catch { /* ignore */ }
   }
-  const effective = (s) => resolveVersion(s, overrides[s.videoId] ?? pref)
-  const [report, setReport] = useState(null) // video health check results (manager only)
-  const [checking, setChecking] = useState(false)
+  const effective = (s) => resolveVersion(s, overrides[s.videoId] ?? pref, health)
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
   const [singers, setSingers] = useState(getSingers)
   useEffect(() => onSingersChange(() => setSingers(getSingers())), [])
 
   // category chips: only the groups that actually have songs
+  // songs whose videos are all known to be blocked or gone are hidden from kids (the manager still shows them, flagged)
+  const visible = useMemo(() => (admin ? library : library.filter((s) => isPlayable(s, health))), [library, health, admin])
   const counts = useMemo(() => {
     const c = {}
-    for (const g of [...GROUPS, 'Other']) c[g] = library.filter((s) => inCategory(s, g)).length
+    for (const g of [...GROUPS, 'Other']) c[g] = visible.filter((s) => inCategory(s, g)).length
     return c
-  }, [library])
+  }, [visible])
   const categories = [...GROUPS, 'Other'].filter((g) => counts[g])
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return library.filter(
+    return visible.filter(
       (s) =>
         (category === 'All' || inCategory(s, category)) &&
         (!q || `${s.title} ${s.artist ?? ''}`.toLowerCase().includes(q)),
     )
-  }, [library, search, category])
+  }, [visible, search, category])
   const filtering = search.trim() || category !== 'All'
 
   const remove = (song) => {
@@ -73,31 +73,24 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     if (url && !id) return window.alert("That doesn't look like a YouTube link.")
     if (id) onSetVersion?.(song, kind, id)
   }
-  const runCheck = async () => {
-    setChecking(true)
-    const ids = library.flatMap((s) => [s.karaokeId, s.officialId].filter(Boolean).concat(!s.karaokeId && !s.officialId ? [s.videoId] : []))
-    setReport(await checkVideos(ids))
-    setChecking(false)
-  }
   const problems = (s) => {
-    if (!report) return []
     const v = versionsOf(s)
-    return [['karaoke', v.karaoke], ['official', v.official]].filter(([, id]) => id && report[id] && report[id] !== 'ok' && report[id] !== 'unknown')
+    return [['karaoke', v.karaoke], ['official', v.official]].filter(([, id]) => id && isBad(health[id]))
   }
 
   // the small control on each song: switch version if there are two, otherwise say which one exists
   const versionControl = (s) => {
     const eff = effective(s)
     if (hasBoth(s)) {
-      return <VersionToggle size="sm" value={eff.version} onChange={(v) => setOverrides((o) => ({ ...o, [s.videoId]: v }))} />
+      return <VersionToggle size="sm" value={eff.version} usable={versionUsable(s, health)} onChange={(v) => setOverrides((o) => ({ ...o, [s.videoId]: v }))} />
     }
     return <span className="text-xs font-semibold text-slate-500">{eff.version === 'karaoke' ? '🎤 Karaoke only' : '🎬 Original only'}</span>
   }
   const managerButtons = (s) => (
     <span className="flex flex-wrap items-center gap-2 justify-end">
       {problems(s).map(([kind, id]) => (
-        <span key={kind} className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${report[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
-          ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {report[id] === 'missing' ? 'gone' : 'blocked'}
+        <span key={kind} className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${health[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
+          ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {health[id] === 'missing' ? 'gone' : 'blocked'}
         </span>
       ))}
       {!versionsOf(s).karaoke && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'karaoke') }}>＋🎤 karaoke</span>}
@@ -122,16 +115,14 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
           <p className="font-bold">🛠️ Managing the song library: {canEdit ? '✏️ renames a song, 🗑️ removes it. Tap Done when you\'re finished.' : 'sign in above to rename or remove songs.'}</p>
           {dbError && <p className="text-sm mt-1">{dbError}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <button className="big-btn !py-1.5 !text-base bg-white text-rose-800" onClick={runCheck} disabled={checking}>
-              {checking ? 'Checking…' : '🔍 Check that every video can play'}
-            </button>
-            {report && (
-              <span className="text-sm font-semibold">
-                {Object.values(report).filter((v) => v === 'blocked' || v === 'missing').length
-                  ? `⚠️ ${Object.values(report).filter((v) => v === 'blocked' || v === 'missing').length} video(s) can't be played here (marked below)`
-                  : Object.values(report).includes('unknown') ? "Couldn't check (offline?)" : '✅ All videos can be played'}
-              </span>
-            )}
+            <span className="text-sm font-semibold">
+              {checking
+                ? 'Checking that every video can play…'
+                : library.filter((s) => problems(s).length).length
+                  ? `⚠️ ${library.filter((s) => problems(s).length).length} song(s) have a video that can't be played here (flagged below). The app already avoids them.`
+                  : '✅ Every video can be played here'}
+            </span>
+            <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={onRecheck} disabled={checking}>🔍 Re-check now</button>
           </div>
         </div>
       )}

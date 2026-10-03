@@ -8,7 +8,8 @@ import HoldButton from './components/HoldButton.jsx'
 import SeekBar from './components/SeekBar.jsx'
 import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
-import { hasBoth, otherVersion, resolveVersion, versionLabel, versionsOf } from './lib/songs.js'
+import { hasBoth, otherVersion, resolveVersion, versionUsable, versionsOf } from './lib/songs.js'
+import { useVideoHealth } from './hooks/useVideoHealth.js'
 import VersionToggle from './components/VersionToggle.jsx'
 import { addSinger, clearSingers } from './lib/singers.js'
 import EditableName from './components/EditableName.jsx'
@@ -34,6 +35,7 @@ export default function App() {
   const [count, setCount] = useState(0)
   const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, addSongs, starters, usingDb } = useLibrary()
   const auth = useAuth()
+  const { health, checking: checkingVideos, recheck, reportBad } = useVideoHealth(library)
   const canEdit = !usingDb || !!auth.session
 
   // When signed in, keep the shared database in step with the bundled starter list:
@@ -61,6 +63,7 @@ export default function App() {
   const player = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [playerError, setPlayerError] = useState(null) // YouTube error code, or null
+  const [flash, setFlash] = useState(null) // brief ▶ / ⏸ shown when you click the stage
   const [apiFailed, setApiFailed] = useState(false) // the YouTube script never loaded (offline / blocked)
   const [needsTap, setNeedsTap] = useState(false) // the browser/YouTube didn't start the video by itself
   // the visualizer is the default; the video keeps playing (and supplying the sound) underneath it
@@ -78,7 +81,7 @@ export default function App() {
       update((s) => (s.current ? { ...s, queue: [...s.queue, song] } : { ...s, current: song })),
     addFromLibrary: (song, singer = '', pref = 'karaoke') => {
       const position = queue.length + 1 // 1 = next in line
-      const { version, videoId } = resolveVersion(song, pref)
+      const { version, videoId } = resolveVersion(song, pref, health)
       actions.add({
         id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()),
         libId: song.videoId, videoId, version, karaokeId: song.karaokeId, officialId: song.officialId,
@@ -99,7 +102,7 @@ export default function App() {
     // switch a queued (or the current) song between its karaoke and original video
     setVersion: (id, version) =>
       update((s) => {
-        const swap = (q) => (q.id === id ? { ...q, ...resolveVersion({ ...q, videoId: q.libId ?? q.videoId }, version) } : q)
+        const swap = (q) => (q.id === id ? { ...q, ...resolveVersion({ ...q, videoId: q.libId ?? q.videoId }, version, health) } : q)
         return { ...s, current: s.current ? swap(s.current) : s.current, queue: s.queue.map(swap) }
       }),
     setSinger: (id, name) => {
@@ -173,6 +176,8 @@ export default function App() {
 
   // the video can't be seen in visualizer mode, so say so (and move on) when YouTube refuses to play it
   const onPlayerError = (code) => {
+    // remember that this video doesn't work, so it's avoided from now on
+    if (current) reportBad(current.videoId, code === 100 ? 'missing' : 'blocked')
     // if this song has another video (karaoke <-> original), switch to it before giving up
     if (current && hasBoth(current) && !current.triedAlt) {
       const active = current.videoId === current.karaokeId ? 'karaoke' : 'official'
@@ -272,6 +277,21 @@ export default function App() {
               <Visualizer playing={playing} />
             </div>
           )}
+          {/* click anywhere on the stage to pause / play (the YouTube controls underneath are covered on purpose) */}
+          <div
+            className="absolute inset-0 z-[12] cursor-pointer"
+            onClick={() => {
+              if (!current || holding) return
+              setFlash({ id: Date.now(), icon: playing ? '⏸' : '▶' })
+              player.current?.togglePlay()
+            }}
+            aria-label="Pause or play"
+          />
+          {flash && (
+            <div key={flash.id} className="pointer-events-none absolute inset-0 z-[13] grid place-items-center" onAnimationEnd={() => setFlash(null)}>
+              <span className="grid h-28 w-28 place-items-center rounded-full bg-black/55 text-6xl text-white animate-flash">{flash.icon}</span>
+            </div>
+          )}
           <LyricsOverlay lyrics={lyrics} getTime={getTime} getDuration={getDuration} />
           {holding && !playerError && (
             <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/85 text-white text-center p-6">
@@ -344,7 +364,7 @@ export default function App() {
             {current && <p className="text-base sm:text-lg lg:text-2xl text-pink-600 font-semibold">🎤 <EditableName value={current.singer} onSave={(n) => actions.setSinger(current.id, n)} placeholder="Add singer name" />{semitones ? <span className="ml-3 text-sm text-teal-700">🎚️ Key {semitones > 0 ? '+' : ''}{semitones}</span> : null}</p>}
           </div>
           {current && hasBoth(current) && (
-            <VersionToggle value={current.version ?? 'karaoke'} onChange={(v) => actions.setVersion(current.id, v)} />
+            <VersionToggle usable={versionUsable(current, health)} value={current.version ?? 'karaoke'} onChange={(v) => actions.setVersion(current.id, v)} />
           )}
           {queue[0] && (
             <p className="text-sm sm:text-base lg:text-lg text-slate-600 truncate max-w-[34%]">
@@ -385,7 +405,7 @@ export default function App() {
           </div>
           {panel === 'queue' && (
             <>
-              <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} onRename={actions.setSinger} onVersion={actions.setVersion} />
+              <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} onRename={actions.setSinger} onVersion={actions.setVersion} health={health} />
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" className="w-5 h-5" checked={autoNext} onChange={(e) => setAutoNext(e.target.checked)} />
                 Auto-play next song
@@ -440,6 +460,9 @@ export default function App() {
               onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
               onRename={(song, title) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, title } : x)))}
               onSetVersion={(song, kind, id) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, ...(kind === 'karaoke' ? { karaokeId: id } : { officialId: id }) } : x)))}
+              health={health}
+              checking={checkingVideos}
+              onRecheck={recheck}
               dbError={libraryError}
             />
           </div>

@@ -9,10 +9,24 @@ export const versionsOf = (s) => ({
 })
 
 // Which version to use given a preference ('karaoke' | 'official'); falls back to whichever exists.
-export function resolveVersion(song, pref = 'karaoke') {
+// `health` ({ id: status }) lets it steer away from videos known to be blocked or gone.
+const usable = (id, health) => !!id && health?.[id] !== 'blocked' && health?.[id] !== 'missing'
+export function resolveVersion(song, pref = 'karaoke', health = null) {
   const v = versionsOf(song)
-  const version = v[pref] ? pref : pref === 'karaoke' ? 'official' : 'karaoke'
+  const other = pref === 'karaoke' ? 'official' : 'karaoke'
+  let version = v[pref] ? pref : other
+  if (v[pref] && v[other] && !usable(v[pref], health) && usable(v[other], health)) version = other
   return { version, videoId: v[version] ?? song.videoId }
+}
+// does at least one of the song's videos work?
+export function isPlayable(song, health) {
+  const v = versionsOf(song)
+  return [v.karaoke, v.official].some((id) => usable(id, health))
+}
+// { karaoke: bool, official: bool }: which versions are known to work
+export function versionUsable(song, health) {
+  const v = versionsOf(song)
+  return { karaoke: usable(v.karaoke, health), official: usable(v.official, health) }
 }
 
 export const otherVersion = (version) => (version === 'karaoke' ? 'official' : 'karaoke')
