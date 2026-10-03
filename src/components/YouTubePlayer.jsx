@@ -19,6 +19,11 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
   }
 
   useImperativeHandle(ref, () => ({
+    seekTo: (sec) => player.current?.seekTo?.(sec, true),
+    seekBy: (sec) => {
+      const p = player.current
+      if (p?.getCurrentTime) p.seekTo(Math.max(0, p.getCurrentTime() + sec), true)
+    },
     getDuration: () => player.current?.getDuration?.() ?? 0,
     togglePlay: () => {
       const p = player.current

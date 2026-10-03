@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSharedState } from './hooks/useSharedState.js'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
 import AddSongForm from './components/AddSongForm.jsx'
 import Queue from './components/Queue.jsx'
 import LyricsOverlay from './components/LyricsOverlay.jsx'
 import LyricsPanel from './components/LyricsPanel.jsx'
+import SeekBar from './components/SeekBar.jsx'
 import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
+import { clearSingers } from './lib/singers.js'
 import PitchControls from './components/PitchControls.jsx'
 import SongPicker from './components/SongPicker.jsx'
 import LibraryAdmin from './components/LibraryAdmin.jsx'
@@ -90,6 +92,21 @@ export default function App() {
   }
 
   const lyrics = useLyrics(isRemote ? null : current, actions.patchCurrent)
+  const getTime = useCallback(() => player.current?.getTime() ?? 0, [])
+  const getDuration = useCallback(() => player.current?.getDuration() ?? 0, [])
+
+  // laptop shortcuts: space = pause/play, left/right = back/forward 10 seconds
+  useEffect(() => {
+    if (isRemote) return
+    const onKey = (e) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return
+      if (e.code === 'Space') { e.preventDefault(); player.current?.togglePlay() }
+      else if (e.code === 'ArrowLeft') player.current?.seekBy(-10)
+      else if (e.code === 'ArrowRight') player.current?.seekBy(10)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // toast disappears on its own
   useEffect(() => {
@@ -148,7 +165,7 @@ export default function App() {
     </button>
   )
 
-  const stageWidth = 'w-full lg:w-[min(100%,calc((100vh-12rem)*1.7778))]'
+  const stageWidth = 'w-full lg:w-[min(100%,calc((100vh-14rem)*1.7778))]'
 
   return (
     <div className="flex flex-col p-3 sm:p-4 gap-3 lg:h-screen lg:overflow-hidden">
@@ -178,6 +195,12 @@ export default function App() {
               <div className="my-1 border-t border-violet-100" />
               {menuItem(stageMode === 'visualizer' ? '🎬 Show the video' : '🌈 Show the visualizer', () => setMode(stageMode === 'visualizer' ? 'video' : 'visualizer'))}
               {menuItem('⛶ Full screen', toggleFullscreen)}
+              {menuItem('🎉 New party (reset names & queue)', () => {
+                if (window.confirm('Start a new party? This clears the queue and all saved singer names. The song library is not touched.')) {
+                  clearSingers()
+                  update(() => ({ queue: [], current: null }))
+                }
+              })}
             </div>
           </>
         )}
@@ -192,7 +215,7 @@ export default function App() {
               <Visualizer playing={playing} />
             </div>
           )}
-          <LyricsOverlay lyrics={lyrics} getTime={() => player.current?.getTime() ?? 0} getDuration={() => player.current?.getDuration() ?? 0} />
+          <LyricsOverlay lyrics={lyrics} getTime={getTime} getDuration={getDuration} />
           {holding && !playerError && (
             <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/85 text-white text-center p-6">
               <div>
@@ -237,8 +260,13 @@ export default function App() {
               Up next: <b>{queue[0].singer}</b> · {queue[0].title}{queue.length > 1 ? ` (+${queue.length - 1})` : ''}
             </p>
           )}
+          <div className="w-full order-last">
+            <SeekBar getTime={getTime} getDuration={getDuration} seekTo={(s) => player.current?.seekTo(s)} disabled={!current || holding} />
+          </div>
           <div className="flex gap-2">
-            <button className="rounded-lg px-3 py-1.5 bg-violet-100 text-violet-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.togglePlay()}>{playing ? '⏸️ Pause' : '▶️ Play'}</button>
+            <button className="rounded-lg px-3 py-1.5 bg-slate-100 text-slate-800 font-semibold disabled:opacity-40" disabled={!current || holding} onClick={() => player.current?.seekBy(-10)} title="Back 10 seconds (←)">⏪ 10s</button>
+            <button className="rounded-lg px-3 py-1.5 bg-violet-100 text-violet-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.togglePlay()} title="Pause / play (space)">{playing ? '⏸️ Pause' : '▶️ Play'}</button>
+            <button className="rounded-lg px-3 py-1.5 bg-slate-100 text-slate-800 font-semibold disabled:opacity-40" disabled={!current || holding} onClick={() => player.current?.seekBy(10)} title="Forward 10 seconds (→)">10s ⏩</button>
             <button className="rounded-lg px-3 py-1.5 bg-sky-100 text-sky-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.restart()}>🔁 Restart</button>
             <button className="rounded-lg px-3 py-1.5 bg-green-100 text-green-800 font-semibold disabled:opacity-40" disabled={!current && !queue.length} onClick={actions.next}>⏭️ Next</button>
           </div>

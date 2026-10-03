@@ -1,16 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { addSinger, clearSingers, getSingers, onSingersChange, removeSinger } from '../lib/singers.js'
 import { SignIn } from './LibraryAdmin.jsx'
 import { GROUPS, genreGroup } from '../lib/genres.js'
 
-const SINGERS_KEY = 'karaoke-singers'
 const VIEW_KEY = 'karaoke-picker-view'
 const loadView = () => {
   try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
 }
-const loadSingers = () => {
-  try { return JSON.parse(localStorage.getItem(SINGERS_KEY)) || [] } catch { return [] }
-}
-
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
 export default function SongPicker({ library, onPick, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
   const [search, setSearch] = useState('')
@@ -22,7 +18,8 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
   }
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
-  const [singers, setSingers] = useState(loadSingers)
+  const [singers, setSingers] = useState(getSingers)
+  useEffect(() => onSingersChange(() => setSingers(getSingers())), [])
 
   // category chips: only the groups that actually have songs
   const counts = useMemo(() => {
@@ -44,9 +41,7 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
 
   const confirm = (name) => {
     const who = (name ?? singer).trim() || 'Mystery Singer'
-    const next = [who, ...singers.filter((n) => n !== who)].slice(0, 12)
-    setSingers(next)
-    try { localStorage.setItem(SINGERS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+    if (who !== 'Mystery Singer') addSinger(who)
     onPick(chosen, who)
     setChosen(null)
     setSinger('')
@@ -188,7 +183,10 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
             {singers.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {singers.map((n) => (
-                  <button key={n} className="big-btn !py-2 bg-violet-200" onClick={() => confirm(n)}>{n}</button>
+                  <span key={n} className="inline-flex rounded-2xl bg-violet-200 shadow-md overflow-hidden">
+                    <button className="px-4 py-2 font-bold text-lg hover:bg-violet-300" onClick={() => confirm(n)}>{n}</button>
+                    <button className="px-2 text-violet-700 hover:bg-rose-200" aria-label={`Remove ${n}`} title="Remove this name" onClick={() => removeSinger(n)}>✕</button>
+                  </span>
                 ))}
               </div>
             )}
@@ -196,7 +194,10 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
               <input autoFocus className="field !text-xl" placeholder="Type a name" value={singer} onChange={(e) => setSinger(e.target.value)} />
               <button className="big-btn bg-pink-500 text-white">Sing it!</button>
             </form>
-            <button className="text-slate-500 underline" onClick={() => setChosen(null)}>Cancel</button>
+            <div className="flex items-center gap-4 text-sm text-slate-500">
+              <button className="underline" onClick={() => setChosen(null)}>Cancel</button>
+              {singers.length > 1 && <button className="underline ml-auto" onClick={clearSingers}>Clear all names</button>}
+            </div>
           </div>
         </div>
       )}
