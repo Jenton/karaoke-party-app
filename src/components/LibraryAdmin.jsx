@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { HAS_SERVER } from '../lib/env.js'
 import { GROUPS } from '../lib/genres.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
+import { mergeSongs, parseSongList } from '../lib/importSongs.js'
 
 // Build the curated song list from YouTube search, a playlist, or a pasted link.
 export function SignIn({ auth }) {
@@ -36,6 +37,8 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const [linkArtist, setLinkArtist] = useState('')
   const [linkGenre, setLinkGenre] = useState('')
   const [linkKind, setLinkKind] = useState('official')
+  const [jsonText, setJsonText] = useState('')
+  const [jsonMsg, setJsonMsg] = useState('')
 
   useEffect(() => {
     if (!HAS_SERVER) return
@@ -87,6 +90,17 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
     }
   }
 
+  const importJson = (e) => {
+    e.preventDefault()
+    const { songs, skipped, error } = parseSongList(jsonText)
+    if (error) return setJsonMsg(error)
+    if (!songs.length) return setJsonMsg('No usable songs found (each needs a title and a YouTube id).')
+    const { library: merged, added, updated } = mergeSongs(library, songs)
+    save(merged)
+    setJsonMsg(`✅ Added ${added} new song${added === 1 ? '' : 's'}${updated ? `, filled in ${updated} existing` : ''}${skipped ? `. Skipped ${skipped} row(s) without a valid title/video id` : ''}.`)
+    setJsonText('')
+  }
+
   const addLink = (e) => {
     e.preventDefault()
     const videoId = parseYouTubeId(link)
@@ -128,12 +142,15 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
       )}
 
       {HAS_SERVER ? (
-        <div className="flex gap-2">{tab('search', 'YouTube search')}{tab('playlist', 'Playlist')}{tab('link', 'Paste link')}</div>
+        <div className="flex flex-wrap gap-2">{tab('search', 'YouTube search')}{tab('playlist', 'Playlist')}{tab('link', 'Paste link')}{tab('json', 'Paste list')}</div>
       ) : (
+        <div className="flex flex-wrap gap-2">{tab('link', 'Paste link')}{tab('json', 'Paste list')}</div>
+      )}
+      {!HAS_SERVER && (
         !usingDb && <p className="text-sm text-slate-600">On this public page, songs you add are saved in this browser only. (YouTube search/import and sharing the list need the laptop version.)</p>
       )}
 
-      {mode !== 'link' && enabled === false && (
+      {(mode === 'search' || mode === 'playlist') && enabled === false && (
         <p className="text-rose-600 text-sm">
           No YouTube API key found. Put <code>YOUTUBE_API_KEY=…</code> in a <code>.env</code> file and restart <code>npm run dev</code>. (Or use “Paste link”.)
         </p>
@@ -149,6 +166,17 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); run('/api/youtube/playlist?id=' + encodeURIComponent(playlist)) }}>
           <input className="field" placeholder="Playlist link or ID" value={playlist} onChange={(e) => setPlaylist(e.target.value)} />
           <button className="big-btn !py-2 bg-pink-500 text-white" disabled={busy || !enabled || !playlist.trim()}>Load</button>
+        </form>
+      )}
+      {mode === 'json' && (
+        <form className="space-y-2" onSubmit={importJson}>
+          <p className="text-sm text-slate-600">
+            Paste a JSON list of songs. Rows for the same song's karaoke and original videos are merged into one entry. Each row needs a
+            <code> title</code> and a <code>youtubeId</code> (or <code>karaokeId</code> / <code>officialId</code>); <code>artist</code> and <code>genre</code> are optional. Ids ending in <code>-kar</code> or titles saying "Karaoke" are treated as karaoke videos.
+          </p>
+          <textarea className="field h-40 font-mono text-xs" placeholder='[{"title":"Roar","artist":"Katy Perry","youtubeId":"CevxZvSJLk8"}, ...]' value={jsonText} onChange={(e) => setJsonText(e.target.value)} />
+          {jsonMsg && <p className="text-sm font-semibold">{jsonMsg}</p>}
+          <button className="big-btn !py-2 w-full bg-pink-500 text-white" disabled={!jsonText.trim()}>Add these songs</button>
         </form>
       )}
       {mode === 'link' && (

@@ -1,12 +1,13 @@
 // Broad categories used by the song filter chips. Songs can carry any free-text genre
 // ("Upbeat Pop", "Disney / Animation", ...); this folds them into a handful of friendly groups.
-export const GROUPS = ['Karaoke', 'Disney & Movies', 'Dance', 'Feel-good', 'Sing-alongs', 'Throwbacks', 'Fun & Novelty', 'Pop', 'KIDZ BOP']
+export const GROUPS = ['Karaoke', 'KPop Demon Hunters', 'Disney & Movies', 'Dance', 'Feel-good', 'Sing-alongs', 'Throwbacks', 'Fun & Novelty', 'Pop', 'KIDZ BOP']
 
 export function genreGroup(genre) {
   const g = (genre || '').toLowerCase()
   if (!g) return 'Other'
   if (GROUPS.some((x) => x.toLowerCase() === g)) return GROUPS.find((x) => x.toLowerCase() === g)
   if (/karaoke/.test(g)) return 'Karaoke'
+  if (/demon hunters|kpop demon/.test(g)) return 'KPop Demon Hunters'
   if (/kidz/.test(g)) return 'KIDZ BOP'
   if (/disney|movie|animation|shrek|soundtrack/.test(g)) return 'Disney & Movies'
   if (/dance|funk|k-pop/.test(g)) return 'Dance'

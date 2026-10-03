@@ -54,9 +54,13 @@ export default function App() {
     let seen = []
     try { seen = JSON.parse(localStorage.getItem(SEEN)) || [] } catch { /* ignore */ }
     const fresh = missingStarters.filter((s) => !seen.includes(s.videoId))
-    if (!fresh.length) return markSeen()
-    addSongs(fresh).then((ok) => ok && markSeen())
-  }, [usingDb, canEdit, loaded, libraryError, starters, missingStarters.length, addSongs, saveLibrary])
+    // a starter whose video ids changed shows up as a new song; drop the old row with the same title so it isn't listed twice
+    const keep = new Set(ids)
+    const titles = new Set(starters.map((s) => s.title.toLowerCase()))
+    const stale = library.filter((s) => !keep.has(s.videoId) && titles.has(s.title.toLowerCase()))
+    if (!fresh.length && !stale.length) return markSeen()
+    saveLibrary([...library.filter((s) => !stale.includes(s)), ...fresh]).then((ok) => ok && markSeen())
+  }, [usingDb, canEdit, loaded, libraryError, starters, missingStarters.length, library.length, saveLibrary])
   const [autoNext, setAutoNext] = useState(true)
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])

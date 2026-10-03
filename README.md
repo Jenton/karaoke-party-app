@@ -22,7 +22,7 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
 
-The starter library (`public/library.json`) has 12 popular songs, each with a **karaoke** and an **original** video (`karaokeId` / `officialId`), plus artist and category. The "original" video for each song is an official audio or lyric-video upload where one exists (those start at 0:00 on the studio recording, so lyric timing lines up and there are no skits or dance tutorials), and the karaoke video is a karaoke-channel upload. The IDs were found by searching for each title (not by guessing), but nothing can confirm from outside a browser that every one allows embedding; the app checks that itself (see below). On the first sign-in on a device the app **replaces the whole shared library with this starter list** (a one-off reset); after that it only adds starter songs it hasn't offered yet.
+The starter library (`public/library.json`) has 39 songs (K-Pop Demon Hunters, Disney, pop and sing-along favourites), each with a **karaoke** and an **original** video (`karaokeId` / `officialId`), plus artist and category. The "original" video for each song is an official audio or lyric-video upload where one exists (those start at 0:00 on the studio recording, so lyric timing lines up and there are no skits or dance tutorials), and the karaoke video is a karaoke-channel upload. The IDs were found by searching for each title (not by guessing), but nothing can confirm from outside a browser that every one allows embedding; the app checks that itself (see below). On the first sign-in on a device the app **replaces the whole shared library with this starter list** (a one-off reset); after that it only adds starter songs it hasn't offered yet.
 
 ## Shared song database (Supabase): same list at any location
 
@@ -58,6 +58,14 @@ Each song can have both a karaoke video and the original. They are **one entry**
 5. Karaoke uploads (Sing King and similar) almost always allow embedding, which is why karaoke is the default.
 
 Click the stage (video or visualizer) to pause/play; Space does the same.
+
+## Seeding more songs
+
+Three ways, from least to most effort:
+
+1. **Add them to `public/library.json`** (what the starter list is). Each entry is `{ "videoId", "title", "artist", "genre", "karaokeId", "officialId" }` (`videoId` = the original's id, or the karaoke id if there's no original). Commit and push: on the next sign-in the shared database picks up any starter songs it hasn't seen (and drops stale rows for starters whose videos changed).
+2. **Paste a list in the picker's manager** (**Paste list** tab): a JSON list of songs with a title and a `youtubeId` each. Rows for the same song's karaoke and original videos (`"id": "5-off"` / `"5-kar"`, or "(Karaoke Version)" in the title) are merged into one entry. Works with lists from any AI assistant.
+3. **Bulk import from YouTube** (laptop version with an API key): manager → **Playlist** → paste a karaoke playlist (for example Sing King's "Disney Karaoke" `PL8D4Iby0Bmm9DM_LC_2MEwqidYODgXsNw`, or their per-artist playlists) → **Add all**. Those arrive as karaoke-only songs; attach the original with **＋🎬 original** if you want one.
 
 ## Adding and managing songs (all in the song picker)
 
