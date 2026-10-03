@@ -133,9 +133,13 @@ export default function App() {
       update((s) => (s.current ? { ...s, current: { ...s.current, ...patch } } : s)),
   }
 
-  const lyrics = useLyrics(isRemote ? null : current, actions.patchCurrent)
   const getTime = useCallback(() => player.current?.getTime() ?? 0, [])
   const getDuration = useCallback(() => player.current?.getDuration() ?? 0, [])
+  const lyrics = useLyrics(isRemote ? null : current, actions.patchCurrent, { getTime, getDuration })
+  const lyricsRef = useRef(lyrics)
+  lyricsRef.current = lyrics
+  // karaoke videos already show perfectly timed lyrics of their own: show the video and keep our overlay off it
+  const nativeLyrics = lyrics.nativeActive
 
   // laptop shortcuts: space = pause/play, left/right = back/forward 10 seconds
   useEffect(() => {
@@ -145,6 +149,10 @@ export default function App() {
       if (e.code === 'Space') { e.preventDefault(); player.current?.togglePlay() }
       else if (e.code === 'ArrowLeft') player.current?.seekBy(-10)
       else if (e.code === 'ArrowRight') player.current?.seekBy(10)
+      else if (e.code === 'KeyS') {
+        // tap-to-sync the lyrics: press when the first words are sung
+        if (lyricsRef.current?.syncNow()) setToast({ id: Date.now(), text: '🎯 Lyrics synced to this moment' })
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -272,7 +280,7 @@ export default function App() {
       <main className="flex flex-col items-center gap-3 lg:flex-1 lg:min-h-0">
         <div className={`${stageWidth} relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl`}>
           <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} onBlocked={() => setNeedsTap(true)} onApiFailed={() => setApiFailed(true)} />
-          {stageMode === 'visualizer' && (
+          {stageMode === 'visualizer' && !nativeLyrics && (
             <div className="absolute inset-0 z-[5] bg-[#1a0b2e]">
               <Visualizer playing={playing} />
             </div>
@@ -292,7 +300,7 @@ export default function App() {
               <span className="grid h-28 w-28 place-items-center rounded-full bg-black/55 text-6xl text-white animate-flash">{flash.icon}</span>
             </div>
           )}
-          <LyricsOverlay lyrics={lyrics} getTime={getTime} getDuration={getDuration} />
+          {!nativeLyrics && <LyricsOverlay lyrics={lyrics} getTime={getTime} getDuration={getDuration} />}
           {holding && !playerError && (
             <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/85 text-white text-center p-6">
               <div>

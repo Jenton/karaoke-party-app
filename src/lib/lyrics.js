@@ -55,6 +55,7 @@ export async function findLyrics(title, artist) {
     masked: matches.length > 0 && explicit(matches[0]),
     matches: matches.map((x) => ({
       label: `${x.trackName} - ${x.artistName}`,
+      duration: x.duration || 0, // seconds, lets us pick the lyrics that match the video's length
       plain: x.plainLyrics || stripTimes(x.syncedLyrics),
       synced: x.syncedLyrics || '',
     })),
