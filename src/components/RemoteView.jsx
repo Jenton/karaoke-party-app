@@ -12,11 +12,11 @@ export default function RemoteView({ state, actions, library }) {
         <div className="card text-center">
           <p className="text-sm text-slate-500">Now singing</p>
           <p className="text-2xl font-bold">{state.current.title}</p>
-          <p>🎤 {state.current.singer}</p>
+          {state.current.singer && <p>🎤 {state.current.singer}</p>}
         </div>
       )}
       <Queue queue={state.queue} onRemove={actions.remove} />
-      <SongPicker library={library} queuedIds={queuedIds} onPick={actions.addFromLibrary} />
+      <SongPicker library={library} queuedIds={queuedIds} onPick={actions.addFromLibrary} onQuickAdd={actions.quickAdd} />
       <details className="card">
         <summary className="cursor-pointer font-bold">Add a song by link</summary>
         <div className="mt-3"><AddSongForm onAdd={actions.add} /></div>

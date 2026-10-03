@@ -5,10 +5,10 @@ import { GROUPS, genreGroup } from '../lib/genres.js'
 
 const VIEW_KEY = 'karaoke-picker-view'
 const loadView = () => {
-  try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
+  try { return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list' } catch { return 'list' } // list is the default
 }
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
-export default function SongPicker({ library, onPick, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
+export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [view, setViewState] = useState(loadView) // 'grid' (thumbnails) or 'list' (title + artist only)
@@ -40,8 +40,8 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
   const filtering = search.trim() || category !== 'All'
 
   const confirm = (name) => {
-    const who = (name ?? singer).trim() || 'Mystery Singer'
-    if (who !== 'Mystery Singer') addSinger(who)
+    const who = (name ?? singer).trim() // may be empty: they can be named later from the queue
+    if (who) addSinger(who)
     onPick(chosen, who)
     setChosen(null)
     setSinger('')
@@ -122,6 +122,16 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
                 {!admin && queuedIds.includes(s.videoId) && (
                   <span className="shrink-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">In line ✓</span>
                 )}
+                {!admin && onQuickAdd && (
+                  <span
+                    role="button"
+                    aria-label={`Add ${s.title} to the queue`}
+                    className="shrink-0 rounded-xl bg-pink-500 px-4 py-2 font-bold text-white shadow hover:bg-pink-600 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); onQuickAdd(s) }}
+                  >
+                    ＋ Add
+                  </span>
+                )}
                 {admin && (
                   <span
                     role="button"
@@ -169,6 +179,16 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
             <div className="p-3">
               <p className="font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title}</p>
               {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}</p>}
+              {!admin && onQuickAdd && (
+                <span
+                  role="button"
+                  aria-label={`Add ${s.title} to the queue`}
+                  className="mt-2 inline-block rounded-xl bg-pink-500 px-3 py-1 text-sm font-bold text-white hover:bg-pink-600 cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); onQuickAdd(s) }}
+                >
+                  ＋ Add to queue
+                </span>
+              )}
             </div>
           </button>
         ))}
@@ -179,7 +199,7 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setChosen(null)}>
           <div className="card w-full max-w-md space-y-3 animate-pop" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-2xl font-bold text-pink-600">🎤 {chosen.title}{chosen.artist && <span className="block text-base font-normal text-slate-500">{chosen.artist}</span>}</h3>
-            <p className="text-lg">Who's singing?</p>
+            <p className="text-lg">Who's singing? <span className="text-sm text-slate-500">(optional, you can add it later)</span></p>
             {singers.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {singers.map((n) => (
@@ -192,7 +212,7 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
             )}
             <form onSubmit={(e) => { e.preventDefault(); confirm() }} className="flex gap-2">
               <input autoFocus className="field !text-xl" placeholder="Type a name" value={singer} onChange={(e) => setSinger(e.target.value)} />
-              <button className="big-btn bg-pink-500 text-white">Sing it!</button>
+              <button className="big-btn bg-pink-500 text-white">{singer.trim() ? 'Sing it!' : 'Add it!'}</button>
             </form>
             <div className="flex items-center gap-4 text-sm text-slate-500">
               <button className="underline" onClick={() => setChosen(null)}>Cancel</button>

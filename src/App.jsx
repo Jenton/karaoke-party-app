@@ -8,7 +8,8 @@ import LyricsPanel from './components/LyricsPanel.jsx'
 import SeekBar from './components/SeekBar.jsx'
 import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
-import { clearSingers } from './lib/singers.js'
+import { addSinger, clearSingers } from './lib/singers.js'
+import EditableName from './components/EditableName.jsx'
 import PitchControls from './components/PitchControls.jsx'
 import SongPicker from './components/SongPicker.jsx'
 import LibraryAdmin from './components/LibraryAdmin.jsx'
@@ -29,16 +30,24 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const [readyId, setReadyId] = useState(null) // song whose get-ready countdown has finished
   const [count, setCount] = useState(0)
-  const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, usingDb } = useLibrary()
+  const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, addSongs, starters, usingDb } = useLibrary()
   const auth = useAuth()
   const canEdit = !usingDb || !!auth.session
 
-  // One time per device: the first time you're signed in, put the starter songs in the database for you.
+  // When signed in, put starter songs we haven't offered yet into the database for you. We remember which starters
+  // were already offered on this device, so songs you remove don't come back; only genuinely new starters are added.
   useEffect(() => {
-    if (!usingDb || !canEdit || !loaded || libraryError || !missingStarters.length) return
-    if (localStorage.getItem('karaoke-starters-added')) return
-    addStarters().then((ok) => ok && localStorage.setItem('karaoke-starters-added', '1'))
-  }, [usingDb, canEdit, loaded, libraryError, missingStarters.length, addStarters])
+    if (!usingDb || !canEdit || !loaded || libraryError || !starters.length) return
+    const SEEN = 'karaoke-starters-seen'
+    let seen = null
+    try { seen = JSON.parse(localStorage.getItem(SEEN)) } catch { /* ignore */ }
+    // devices set up before this list existed already got the first 27 starters
+    if (!seen) seen = localStorage.getItem('karaoke-starters-added') ? starters.slice(0, 27).map((s) => s.videoId) : []
+    const fresh = missingStarters.filter((s) => !seen.includes(s.videoId))
+    const done = () => localStorage.setItem(SEEN, JSON.stringify(starters.map((s) => s.videoId)))
+    if (!fresh.length) return done()
+    addSongs(fresh).then((ok) => ok && done())
+  }, [usingDb, canEdit, loaded, libraryError, starters, missingStarters.length, addSongs])
   const [autoNext, setAutoNext] = useState(true)
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
@@ -58,18 +67,28 @@ export default function App() {
   const actions = {
     add: (song) =>
       update((s) => (s.current ? { ...s, queue: [...s.queue, song] } : { ...s, current: song })),
-    addFromLibrary: (song, singer) => {
+    addFromLibrary: (song, singer = '') => {
       const position = queue.length + 1 // 1 = next in line
       actions.add({ id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), videoId: song.videoId, title: song.title, artist: song.artist, singer, lyrics: '' })
       setPicking(false)
       setToast({
         id: Date.now(),
         text: !current
-          ? `🎤 ${singer}, you're on stage!`
+          ? singer ? `🎤 ${singer}, you're on stage!` : `🎶 “${song.title}” is up first!`
           : position === 1
-            ? `✅ ${singer} is up next with “${song.title}”`
-            : `✅ ${singer} is #${position} in line`,
+            ? singer ? `✅ ${singer} is up next with “${song.title}”` : `✅ “${song.title}” is up next`
+            : singer ? `✅ ${singer} is #${position} in line` : `✅ “${song.title}” is #${position} in line`,
       })
+    },
+    // add straight from the library with no name; it can be named later in the queue
+    quickAdd: (song) => actions.addFromLibrary(song, ''),
+    setSinger: (id, name) => {
+      if (name) addSinger(name)
+      update((s) => ({
+        ...s,
+        current: s.current?.id === id ? { ...s.current, singer: name } : s.current,
+        queue: s.queue.map((q) => (q.id === id ? { ...q, singer: name } : q)),
+      }))
     },
     remove: (id) => update((s) => ({ ...s, queue: s.queue.filter((q) => q.id !== id) })),
     moveUp: (id) =>
@@ -220,7 +239,12 @@ export default function App() {
             <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/85 text-white text-center p-6">
               <div>
                 <p className="text-lg sm:text-3xl opacity-80">Get ready!</p>
-                <p className="text-4xl sm:text-7xl font-extrabold">🎤 {current.singer}</p>
+                <p className="text-4xl sm:text-7xl font-extrabold">
+                  🎤{' '}
+                  {current.singer || (
+                    <EditableName value="" onSave={(n) => actions.setSinger(current.id, n)} placeholder="Who's singing?" className="!text-white !font-extrabold" />
+                  )}
+                </p>
                 <p className="text-xl sm:text-4xl mt-2">{current.title}</p>
                 <p className="text-7xl sm:text-9xl font-extrabold mt-6" aria-live="polite">{count > 0 ? count : '🎶'}</p>
                 <button className="mt-4 rounded-xl px-5 py-2 bg-white/20 hover:bg-white/30 font-semibold" onClick={() => setReadyId(current.id)}>Start now ▶</button>
@@ -253,11 +277,11 @@ export default function App() {
         <div className={`${stageWidth} rounded-2xl bg-white/90 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2`}>
           <div className="min-w-0 mr-auto">
             <p className="text-xl sm:text-2xl lg:text-4xl font-bold truncate">{current ? current.title : 'Waiting for a singer…'}</p>
-            {current && <p className="text-base sm:text-lg lg:text-2xl text-pink-600 font-semibold">🎤 {current.singer}{semitones ? <span className="ml-3 text-sm text-teal-700">🎚️ Key {semitones > 0 ? '+' : ''}{semitones}</span> : null}</p>}
+            {current && <p className="text-base sm:text-lg lg:text-2xl text-pink-600 font-semibold">🎤 <EditableName value={current.singer} onSave={(n) => actions.setSinger(current.id, n)} placeholder="Add singer name" />{semitones ? <span className="ml-3 text-sm text-teal-700">🎚️ Key {semitones > 0 ? '+' : ''}{semitones}</span> : null}</p>}
           </div>
           {queue[0] && (
             <p className="text-sm sm:text-base lg:text-lg text-slate-600 truncate max-w-[34%]">
-              Up next: <b>{queue[0].singer}</b> · {queue[0].title}{queue.length > 1 ? ` (+${queue.length - 1})` : ''}
+              Up next: {queue[0].singer ? <b>{queue[0].singer}</b> : <button className="font-semibold text-pink-600 underline decoration-dotted" onClick={() => togglePanel('queue')}>+ add name</button>} · {queue[0].title}{queue.length > 1 ? ` (+${queue.length - 1})` : ''}
             </p>
           )}
           <div className="w-full order-last">
@@ -294,7 +318,7 @@ export default function App() {
           </div>
           {panel === 'queue' && (
             <>
-              <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} />
+              <Queue queue={queue} onPlay={actions.playNow} onRemove={actions.remove} onMoveUp={actions.moveUp} onRename={actions.setSinger} />
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" className="w-5 h-5" checked={autoNext} onChange={(e) => setAutoNext(e.target.checked)} />
                 Auto-play next song
@@ -342,6 +366,7 @@ export default function App() {
               library={library}
               queuedIds={[current, ...queue].filter(Boolean).map((s) => s.videoId)}
               onPick={actions.addFromLibrary}
+              onQuickAdd={actions.quickAdd}
               admin={adminMode}
               onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
               adminNeedsSignIn={!canEdit ? auth : null}

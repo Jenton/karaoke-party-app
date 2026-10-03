@@ -1,4 +1,6 @@
-export default function Queue({ queue, onPlay, onRemove, onMoveUp }) {
+import EditableName from './EditableName.jsx'
+
+export default function Queue({ queue, onPlay, onRemove, onMoveUp, onRename }) {
   return (
     <section className="card">
       <h2 className="text-2xl font-bold text-orange-600 mb-3">🎟️ Next up ({queue.length})</h2>
@@ -9,7 +11,7 @@ export default function Queue({ queue, onPlay, onRemove, onMoveUp }) {
             <span className="w-9 h-9 shrink-0 rounded-full bg-violet-600 text-white grid place-items-center font-bold">{i + 1}</span>
             <div className="min-w-0 flex-1">
               <p className="font-bold truncate">{s.title}</p>
-              <p className="text-sm text-slate-600 truncate">🎤 {s.singer}</p>
+              <p className="text-sm text-slate-600 truncate">🎤 <EditableName value={s.singer} onSave={onRename && ((name) => onRename(s.id, name))} /></p>
             </div>
             {onMoveUp && i > 0 && (
               <button aria-label="Move up" className="px-2 py-1 rounded-lg bg-white" onClick={() => onMoveUp(s.id)}>⬆️</button>

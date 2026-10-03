@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { getAnalyser } from '../lib/pitch.js'
 
-// Colourful animated backdrop that stands in for the video.
-// It reacts to the real music when the key changer is on (we can hear the tab audio then);
-// otherwise it dances to a built-in beat so it still looks lively.
+// A calm, dark-to-plum backdrop with slow glowing light and a soft ring of thin bars.
+// Kept deliberately quiet so the lyrics stay the star. It follows the real music while the
+// key changer is on (we can hear the tab audio then); otherwise it breathes to a gentle built-in beat.
+const N = 72
+const hsl = (h, s, l, a = 1) => `hsla(${h}, ${s}%, ${l}%, ${a})`
+
 export default function Visualizer({ playing }) {
   const canvas = useRef(null)
   const live = useRef(playing)
@@ -13,13 +16,21 @@ export default function Visualizer({ playing }) {
     const c = canvas.current
     const ctx = c.getContext('2d')
     let raf
-    let energy = 0 // eases toward 1 while playing, 0 when paused
-    const N = 56
-    const confetti = Array.from({ length: 36 }, (_, i) => ({ x: Math.random(), y: Math.random(), s: 0.4 + Math.random(), h: i * 10, v: 0.02 + Math.random() * 0.05 }))
+    let energy = 0
+    const smooth = new Float32Array(N)
     let freq = null
+    // a handful of big, slow light blobs (position/orbit speeds are fixed per blob)
+    const blobs = [
+      { hue: 322, x: 0.25, y: 0.3, r: 0.5, sx: 0.07, sy: 0.05, a: 0.2 },
+      { hue: 268, x: 0.75, y: 0.35, r: 0.55, sx: 0.05, sy: 0.08, a: 0.24 },
+      { hue: 292, x: 0.5, y: 0.85, r: 0.6, sx: 0.06, sy: 0.04, a: 0.18 },
+      { hue: 215, x: 0.85, y: 0.8, r: 0.38, sx: 0.04, sy: 0.06, a: 0.1 },
+    ]
+    // a few tiny specks that drift upward very slowly
+    const specks = Array.from({ length: 22 }, () => ({ x: Math.random(), y: Math.random(), s: 0.5 + Math.random(), v: 0.004 + Math.random() * 0.01 }))
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
       c.width = c.clientWidth * dpr
       c.height = c.clientHeight * dpr
     }
@@ -30,60 +41,88 @@ export default function Visualizer({ playing }) {
     const frame = (ms) => {
       const t = ms / 1000
       const w = c.width, h = c.height, m = Math.min(w, h)
-      energy += ((live.current ? 1 : 0.15) - energy) * 0.05
+      energy += ((live.current ? 1 : 0.2) - energy) * 0.03
 
-      // levels per bar: real audio if available, else a synthetic beat
+      // levels: real audio when available, else a soft breathing pattern
       const an = getAnalyser()
       if (an && (!freq || freq.length !== an.frequencyBinCount)) freq = new Uint8Array(an.frequencyBinCount)
       if (an) an.getByteFrequencyData(freq)
-      const beat = Math.pow(0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 2), 3) // ~120 bpm pulse
-      const level = (i) =>
-        an
-          ? (freq[Math.floor((i / N) * freq.length * 0.7)] / 255) * energy
-          : (0.25 + 0.75 * Math.abs(Math.sin(t * 2.4 + i * 0.37 + Math.sin(t * 1.3 + i)))) * (0.45 + 0.55 * beat) * energy
+      const breath = 0.5 + 0.5 * Math.sin(t * Math.PI * 1.0) // ~60 bpm
       let bass = 0
-      for (let i = 0; i < 6; i++) bass += level(i) / 6
+      for (let i = 0; i < N; i++) {
+        const target = an
+          ? (freq[Math.floor((i / N) * freq.length * 0.7)] / 255) * energy
+          : (0.3 + 0.5 * Math.abs(Math.sin(t * 0.9 + i * 0.22 + Math.sin(t * 0.5 + i * 0.1)))) * (0.75 + 0.25 * breath) * energy
+        smooth[i] += (target - smooth[i]) * 0.12 // ease so nothing jitters
+        if (i < 8) bass += smooth[i] / 8
+      }
 
-      // rainbow background that slowly drifts
-      const hue = (t * 20) % 360
-      const g = ctx.createLinearGradient(0, 0, w, h)
-      g.addColorStop(0, `hsl(${hue}, 85%, 32%)`)
-      g.addColorStop(0.5, `hsl(${hue + 70}, 85%, 40%)`)
-      g.addColorStop(1, `hsl(${hue + 150}, 85%, 34%)`)
+      // base: deep indigo -> plum, very slowly shifting
+      const drift = Math.sin(t * 0.05) * 10
+      const g = ctx.createLinearGradient(0, 0, 0, h)
+      g.addColorStop(0, hsl(250 + drift, 55, 11))
+      g.addColorStop(1, hsl(292 + drift, 50, 15))
       ctx.fillStyle = g
       ctx.fillRect(0, 0, w, h)
 
-      // floating confetti
-      for (const p of confetti) {
-        p.y -= p.v * 0.01 * (0.5 + energy * 2)
-        if (p.y < -0.05) { p.y = 1.05; p.x = Math.random() }
-        ctx.fillStyle = `hsla(${p.h + t * 40}, 90%, 70%, 0.55)`
-        const r = m * 0.012 * p.s * (1 + bass * 1.5)
+      // slow glowing light
+      ctx.globalCompositeOperation = 'lighter'
+      for (const b of blobs) {
+        const x = (b.x + Math.sin(t * b.sx * 2 + b.hue) * 0.12) * w
+        const y = (b.y + Math.cos(t * b.sy * 2 + b.hue) * 0.1) * h
+        const r = b.r * m * (1 + bass * 0.06)
+        const rg = ctx.createRadialGradient(x, y, 0, x, y, r)
+        rg.addColorStop(0, hsl(b.hue + drift, 75, 55, b.a * (0.7 + 0.3 * energy)))
+        rg.addColorStop(1, hsl(b.hue + drift, 75, 55, 0))
+        ctx.fillStyle = rg
+        ctx.fillRect(0, 0, w, h)
+      }
+      ctx.globalCompositeOperation = 'source-over'
+
+      // specks
+      for (const p of specks) {
+        p.y -= p.v * 0.02 * (0.4 + energy)
+        if (p.y < -0.02) { p.y = 1.02; p.x = Math.random() }
+        ctx.fillStyle = hsl(300, 60, 85, 0.22)
         ctx.beginPath()
-        ctx.arc(p.x * w + Math.sin(t + p.h) * m * 0.02, p.y * h, r, 0, Math.PI * 2)
+        ctx.arc(p.x * w, p.y * h, m * 0.0035 * p.s, 0, Math.PI * 2)
         ctx.fill()
       }
 
-      // radial bars + pulsing core
-      const cx = w / 2, cy = h * 0.46, r0 = m * (0.16 + bass * 0.04)
+      // soft ring of thin bars, in a narrow pink-violet range
+      const cx = w / 2, cy = h * 0.36, r0 = m * 0.17
       ctx.lineCap = 'round'
-      ctx.lineWidth = m * 0.016
+      ctx.lineWidth = Math.max(2, m * 0.006)
       for (let i = 0; i < N; i++) {
-        const a = (i / N) * Math.PI * 2 + t * 0.15
-        const len = m * (0.03 + level(i) * 0.26)
-        ctx.strokeStyle = `hsl(${(i / N) * 360 + t * 40}, 95%, 62%)`
+        const a = (i / N) * Math.PI * 2 - Math.PI / 2 + t * 0.03
+        const len = m * (0.012 + smooth[i] * 0.09)
+        const hue = 270 + 60 * (0.5 + 0.5 * Math.sin(a * 2 + t * 0.2)) // 270-330
+        ctx.strokeStyle = hsl(hue, 70, 72, 0.55 + 0.25 * smooth[i])
         ctx.beginPath()
         ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0)
         ctx.lineTo(cx + Math.cos(a) * (r0 + len), cy + Math.sin(a) * (r0 + len))
         ctx.stroke()
       }
-      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r0)
-      core.addColorStop(0, `hsla(${hue + 200}, 100%, 85%, 0.95)`)
-      core.addColorStop(1, `hsla(${hue + 300}, 100%, 60%, 0.6)`)
+      // hairline ring + gentle glow in the middle
+      ctx.strokeStyle = hsl(300, 60, 80, 0.2)
+      ctx.lineWidth = Math.max(1, m * 0.002)
+      ctx.beginPath()
+      ctx.arc(cx, cy, r0 * 0.94, 0, Math.PI * 2)
+      ctx.stroke()
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r0 * 0.9)
+      core.addColorStop(0, hsl(310, 70, 80, 0.28 + bass * 0.12))
+      core.addColorStop(1, hsl(280, 70, 60, 0))
       ctx.fillStyle = core
       ctx.beginPath()
-      ctx.arc(cx, cy, r0 * (0.9 + bass * 0.25), 0, Math.PI * 2)
+      ctx.arc(cx, cy, r0 * (0.92 + bass * 0.05), 0, Math.PI * 2)
       ctx.fill()
+
+      // vignette keeps the edges dark and the lyrics readable
+      const v = ctx.createRadialGradient(w / 2, h / 2, m * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75)
+      v.addColorStop(0, 'rgba(0,0,0,0)')
+      v.addColorStop(1, 'rgba(0,0,0,0.45)')
+      ctx.fillStyle = v
+      ctx.fillRect(0, 0, w, h)
 
       raf = requestAnimationFrame(frame)
     }

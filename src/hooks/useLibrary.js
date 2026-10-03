@@ -155,5 +155,7 @@ export function useLibrary() {
   const missingStarters = starters.filter((s) => !library.some((l) => l.videoId === s.videoId))
   const addStarters = useCallback(() => save([...current.current, ...missingStarters]), [save, missingStarters])
 
-  return { library, save, reload, loaded, error, missingStarters, addStarters, usingDb: !!supabase }
+  const addSongs = useCallback((list) => save([...current.current, ...list]), [save])
+
+  return { library, save, reload, loaded, error, missingStarters, addStarters, addSongs, starters, usingDb: !!supabase }
 }

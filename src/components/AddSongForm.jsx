@@ -18,7 +18,7 @@ export default function AddSongForm({ onAdd, onSaveToLibrary }) {
       id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()),
       videoId,
       title: title.trim(),
-      singer: singer.trim() || 'Mystery Singer',
+      singer: singer.trim(),
       lyrics,
     })
     if (save && onSaveToLibrary) onSaveToLibrary({ videoId, title: title.trim() })
@@ -30,7 +30,7 @@ export default function AddSongForm({ onAdd, onSaveToLibrary }) {
       <h2 className="text-2xl font-bold text-violet-700">➕ Add by link</h2>
       <input className="field" placeholder="Paste YouTube link" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" />
       <input className="field" placeholder="Song title" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <input className="field" placeholder="Who's singing?" value={singer} onChange={(e) => setSinger(e.target.value)} />
+      <input className="field" placeholder="Who's singing? (optional)" value={singer} onChange={(e) => setSinger(e.target.value)} />
       <textarea className="field h-24" placeholder="Lyrics (optional - paste them here)" value={lyrics} onChange={(e) => setLyrics(e.target.value)} />
       {onSaveToLibrary && (
         <label className="flex items-center gap-2"><input type="checkbox" className="w-5 h-5" checked={save} onChange={(e) => setSave(e.target.checked)} /> Also save to song library</label>

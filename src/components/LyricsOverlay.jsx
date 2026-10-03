@@ -31,32 +31,70 @@ export default function LyricsOverlay({ lyrics, getTime, getDuration }) {
   if (!song) return null
 
   if (synced) {
-    let active = -1
-    for (let i = 0; i < lines.length; i++) if (lines[i].t + offset <= now) active = i
-    const cur = lines[active]
-    const next = lines[active + 1] ?? (active < 0 ? lines[0] : null)
-    let p = 0
-    if (cur) {
-      const gap = (lines[active + 1]?.t ?? cur.t + 6) - cur.t
-      p = Math.min(1, Math.max(0, (now - offset - cur.t) / (Math.min(gap, 8) * 0.85)))
+    // a leading "instrumental" line so something is always on the top row, even before the first lyric
+    const rows = [{ t: -1, text: '' }, ...lines]
+    let active = 0
+    for (let i = 0; i < rows.length; i++) if (rows[i].t + offset <= now) active = i
+    const first = Math.max(0, active - 2)
+    const visible = rows.slice(first, active + 4)
+
+    // where each row sits relative to the current one:
+    //   -1 slides up and fades out | 0 top row, full size | 1 second row, smaller | 2 waiting below, invisible
+    const slot = (rel) => {
+      if (rel === 0) return { y: 0, scale: 1, opacity: 1 }
+      if (rel === 1) return { y: 1.3, scale: 0.68, opacity: 0.75 }
+      if (rel === 2) return { y: 2.1, scale: 0.6, opacity: 0 }
+      if (rel === -1) return { y: -1.2, scale: 0.92, opacity: 0 }
+      return { y: rel < 0 ? -2 : 2.6, scale: 0.6, opacity: 0 }
     }
-    const text = cur ? cur.text || '♪ ♪ ♪' : '♪ ♪ ♪'
+
     return (
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-[4%] pt-24 pb-[3%] bg-gradient-to-t from-black/75 via-black/40 to-transparent text-center">
-        <p className="relative inline-block font-extrabold leading-tight text-white" style={{ fontSize: size(sizeIdx), ...outline }}>
-          {text}
-          <span
-            aria-hidden
-            className="absolute inset-0 text-yellow-300"
-            style={{ clipPath: `inset(0 ${100 - p * 100}% 0 0)`, ...outline }}
-          >
-            {text}
-          </span>
-        </p>
-        <p className="mt-2 font-bold leading-tight text-white/70 truncate" style={{ fontSize: size(sizeIdx, 0.72), ...outline }}>
-          {next?.text || ' '}
-        </p>
-      </div>
+      <>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[52%] bg-gradient-to-t from-black/70 via-black/35 to-transparent" />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[13%] z-10 px-[4%]"
+          style={{ fontSize: size(sizeIdx), height: '2.3em' }}
+        >
+          {visible.map((row, k) => {
+            const idx = first + k
+            const rel = idx - active
+            const { y, scale, opacity } = slot(rel)
+            const text = row.text || '♪ ♪ ♪'
+            // long lines shrink a little so they stay on one row
+            const fit = Math.min(1, 34 / Math.max(text.length, 1))
+            // colour wipe: done for lines already sung, empty for the ones to come
+            let p = rel < 0 ? 1 : 0
+            if (rel === 0) {
+              const gap = (rows[idx + 1]?.t ?? row.t + 6) - Math.max(row.t, 0)
+              p = Math.min(1, Math.max(0, (now - offset - Math.max(row.t, 0)) / (Math.min(gap, 8) * 0.85)))
+            }
+            return (
+              <div
+                key={idx}
+                className="absolute inset-x-0 top-0 text-center font-extrabold leading-tight whitespace-nowrap"
+                style={{
+                  transform: `translateY(${y}em) scale(${(scale * fit).toFixed(3)})`,
+                  transformOrigin: '50% 0',
+                  opacity,
+                  transition: 'transform 800ms cubic-bezier(.45,.05,.25,1), opacity 700ms ease',
+                  willChange: 'transform, opacity',
+                }}
+              >
+                <span className="relative inline-block text-white" style={outline}>
+                  {text}
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 text-yellow-300"
+                    style={{ clipPath: `inset(0 ${100 - p * 100}% 0 0)`, transition: 'clip-path 120ms linear', ...outline }}
+                  >
+                    {text}
+                  </span>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </>
     )
   }
 

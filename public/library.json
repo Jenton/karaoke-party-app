@@ -160,5 +160,65 @@
     "title": "As It Was",
     "artist": "Harry Styles",
     "genre": "Indie Pop"
+  },
+  {
+    "videoId": "QGJuMBdaqIw",
+    "title": "Firework",
+    "artist": "Katy Perry",
+    "genre": "Anthem / Sing-along"
+  },
+  {
+    "videoId": "fWNaR-rxAic",
+    "title": "Call Me Maybe",
+    "artist": "Carly Rae Jepsen",
+    "genre": "Pop Throwback"
+  },
+  {
+    "videoId": "Gn50g4UTWx4",
+    "title": "You've Got a Friend in Me",
+    "artist": "Randy Newman (Toy Story)",
+    "genre": "Disney / Classic"
+  },
+  {
+    "videoId": "-tJYN-eG1zk",
+    "title": "We Will Rock You",
+    "artist": "Queen",
+    "genre": "Classic Rock / Stomp"
+  },
+  {
+    "videoId": "iPUmE-tne5U",
+    "title": "Walking on Sunshine",
+    "artist": "Katrina and the Waves",
+    "genre": "Upbeat Retro"
+  },
+  {
+    "videoId": "XqZsoesa55w",
+    "title": "Baby Shark",
+    "artist": "Pinkfong",
+    "genre": "Novelty / Party"
+  },
+  {
+    "videoId": "cP8Wb5ktcSk",
+    "title": "How Far I'll Go",
+    "artist": "Auli'i Cravalho (Moana)",
+    "genre": "Disney"
+  },
+  {
+    "videoId": "FuJ1CWPqD4g",
+    "title": "Me! (feat. Brendon Urie)",
+    "artist": "Taylor Swift",
+    "genre": "Upbeat Pop"
+  },
+  {
+    "videoId": "i1U5D51n_8Y",
+    "title": "Peaches",
+    "artist": "Jack Black (Super Mario Bros. Movie)",
+    "genre": "Movie Soundtracks"
+  },
+  {
+    "videoId": "QV7tGfxa58E",
+    "title": "Steve's Lava Chicken",
+    "artist": "Jack Black (A Minecraft Movie)",
+    "genre": "Gaming / Comedy"
   }
 ]
