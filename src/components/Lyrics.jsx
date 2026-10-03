@@ -1,33 +1,126 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { findLyrics, parseLrc } from '../lib/lyrics.js'
 
 const SIZES = ['text-2xl', 'text-3xl', 'text-4xl', 'text-5xl', 'text-6xl', 'text-7xl']
 
-// High-contrast lyric screen for a living-room TV.
-export default function Lyrics({ lyrics, onChange }) {
+// High-contrast lyric screen. With synced lyrics it highlights the current line.
+export default function Lyrics({ song, getTime, onChange }) {
   const [size, setSize] = useState(3)
   const [editing, setEditing] = useState(false)
+  const [matches, setMatches] = useState([])
+  const [matchIdx, setMatchIdx] = useState(0)
+  const [status, setStatus] = useState('')
+  const [offset, setOffset] = useState(0) // seconds; + = lyrics appear later
+  const [follow, setFollow] = useState(true)
+  const [now, setNow] = useState(0)
+  const lineRefs = useRef([])
+  const getTimeRef = useRef(getTime)
+  getTimeRef.current = getTime
 
+  const lines = useMemo(() => parseLrc(song?.synced), [song?.synced])
+  const useSynced = follow && lines.length > 0
+
+  // reset per song
+  useEffect(() => {
+    setMatches([]); setMatchIdx(0); setStatus(''); setOffset(0); setEditing(false)
+  }, [song?.id])
+
+  // poll the video clock when following along
+  useEffect(() => {
+    if (!useSynced) return
+    const id = setInterval(() => setNow(getTimeRef.current()), 250)
+    return () => clearInterval(id)
+  }, [useSynced])
+
+  let active = -1
+  if (useSynced) for (let i = 0; i < lines.length; i++) if (lines[i].t + offset <= now) active = i
+
+  useEffect(() => {
+    lineRefs.current[active]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [active])
+
+  const apply = (m) => onChange({ lyrics: m.plain, synced: m.synced })
+
+  const search = async () => {
+    if (!song) return
+    setStatus('Searching… 🔍')
+    try {
+      const found = await findLyrics(song.title)
+      setMatches(found)
+      setMatchIdx(0)
+      if (found.length) {
+        apply(found[0])
+        setStatus(`Found: ${found[0].label}`)
+      } else setStatus('No lyrics found. Try editing the song title, or paste them yourself.')
+    } catch {
+      setStatus("Couldn't reach the lyrics service (is the internet on?).")
+    }
+  }
+
+  const tryNext = () => {
+    const i = (matchIdx + 1) % matches.length
+    setMatchIdx(i)
+    apply(matches[i])
+    setStatus(`Match ${i + 1}/${matches.length}: ${matches[i].label}`)
+  }
+
+  // Auto-search when a song with no lyrics becomes current
+  useEffect(() => {
+    if (song && !song.lyrics?.trim()) search()
+  }, [song?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const btn = '!py-1 !text-base'
   return (
     <section className="rounded-3xl bg-black text-yellow-200 shadow-xl p-4 sm:p-6">
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <h2 className="text-xl font-bold text-white mr-auto">📜 Lyrics</h2>
-        <button className="big-btn !py-1 !text-base bg-white text-black" onClick={() => setSize((s) => Math.max(0, s - 1))}>A−</button>
-        <button className="big-btn !py-1 !text-base bg-white text-black" onClick={() => setSize((s) => Math.min(SIZES.length - 1, s + 1))}>A+</button>
-        <button className="big-btn !py-1 !text-base bg-cyan-300 text-black" onClick={() => setEditing((e) => !e)}>
+        <button className={`big-btn ${btn} bg-white text-black`} onClick={() => setSize((s) => Math.max(0, s - 1))}>A−</button>
+        <button className={`big-btn ${btn} bg-white text-black`} onClick={() => setSize((s) => Math.min(SIZES.length - 1, s + 1))}>A+</button>
+        <button className={`big-btn ${btn} bg-lime-300 text-black`} disabled={!song} onClick={search}>🔍 Find lyrics</button>
+        {matches.length > 1 && (
+          <button className={`big-btn ${btn} bg-orange-300 text-black`} onClick={tryNext}>↻ Try another</button>
+        )}
+        <button className={`big-btn ${btn} bg-cyan-300 text-black`} onClick={() => setEditing((e) => !e)}>
           {editing ? '✅ Done' : '✏️ Edit'}
         </button>
       </div>
+
+      {status && <p className="text-sm text-slate-300 mb-2">{status}</p>}
+      {lines.length > 0 && !editing && (
+        <div className="flex flex-wrap items-center gap-2 mb-3 text-white text-sm">
+          <label className="flex items-center gap-1">
+            <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Follow along
+          </label>
+          <span className="ml-auto">Timing:</span>
+          <button className="px-2 rounded bg-slate-700" onClick={() => setOffset((o) => o - 0.5)}>earlier</button>
+          <span className="w-12 text-center">{offset > 0 ? '+' : ''}{offset.toFixed(1)}s</span>
+          <button className="px-2 rounded bg-slate-700" onClick={() => setOffset((o) => o + 0.5)}>later</button>
+        </div>
+      )}
+
       {editing ? (
         <textarea
           autoFocus
           className="w-full h-72 rounded-xl p-3 text-lg bg-slate-900 text-white border-2 border-cyan-300"
           placeholder="Paste the lyrics here..."
-          value={lyrics}
-          onChange={(e) => onChange(e.target.value)}
+          value={song?.lyrics ?? ''}
+          onChange={(e) => onChange({ lyrics: e.target.value, synced: '' })}
         />
+      ) : useSynced ? (
+        <div className={`${SIZES[size]} font-bold leading-snug text-center max-h-[60vh] overflow-y-auto py-[20vh]`}>
+          {lines.map((l, i) => (
+            <p
+              key={i}
+              ref={(el) => (lineRefs.current[i] = el)}
+              className={`transition-all duration-300 ${i === active ? 'text-white scale-105 my-2' : 'text-yellow-200/50'}`}
+            >
+              {l.text || '♪'}
+            </p>
+          ))}
+        </div>
       ) : (
         <div className={`${SIZES[size]} font-bold leading-snug whitespace-pre-wrap max-h-[60vh] overflow-y-auto text-center`}>
-          {lyrics?.trim() || <span className="text-slate-400">No lyrics yet - tap Edit and paste some! 🎵</span>}
+          {song?.lyrics?.trim() || <span className="text-slate-400">No lyrics yet. Tap Find lyrics or Edit and paste some! 🎵</span>}
         </div>
       )}
     </section>

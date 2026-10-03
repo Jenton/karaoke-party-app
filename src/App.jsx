@@ -5,10 +5,7 @@ import AddSongForm from './components/AddSongForm.jsx'
 import Queue from './components/Queue.jsx'
 import Lyrics from './components/Lyrics.jsx'
 import PitchControls from './components/PitchControls.jsx'
-import SoundBoard from './components/SoundBoard.jsx'
 import RemoteView from './components/RemoteView.jsx'
-import { applause } from './lib/sfx.js'
-import { confettiCannons } from './lib/confetti.js'
 
 const isRemote = new URLSearchParams(location.search).has('remote')
 
@@ -41,8 +38,8 @@ export default function App() {
       }),
     next: () =>
       update((s) => ({ current: s.queue[0] ?? null, queue: s.queue.slice(1) })),
-    setLyrics: (lyrics) =>
-      update((s) => (s.current ? { ...s, current: { ...s.current, lyrics } } : s)),
+    patchCurrent: (patch) =>
+      update((s) => (s.current ? { ...s, current: { ...s.current, ...patch } } : s)),
   }
 
   // each new song starts in its original key
@@ -53,9 +50,7 @@ export default function App() {
   }, [])
 
   const onEnded = () => {
-    applause()
-    confettiCannons()
-    if (autoNext) setTimeout(actions.next, 5000)
+    if (autoNext) setTimeout(actions.next, 3000)
   }
 
   if (isRemote) return <RemoteView state={state} actions={actions} />
@@ -81,7 +76,7 @@ export default function App() {
             <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started} onEnded={onEnded} />
             {!started && (
               <button
-                onClick={() => { setStarted(true); applause() }}
+                onClick={() => setStarted(true)}
                 className="absolute inset-0 grid place-items-center bg-violet-900/90 text-white text-3xl sm:text-5xl font-bold hover:bg-violet-800 transition"
               >
                 🎉 Tap to start the party!
@@ -104,8 +99,7 @@ export default function App() {
             <button className="big-btn bg-green-500 text-white" disabled={!current && !queue.length} onClick={actions.next}>⏭️ Next song</button>
           </div>
 
-          <Lyrics lyrics={current?.lyrics ?? ''} onChange={actions.setLyrics} />
-          <SoundBoard />
+          <Lyrics song={current} getTime={() => player.current?.getTime() ?? 0} onChange={actions.patchCurrent} />
         </main>
 
         <aside className="space-y-4">

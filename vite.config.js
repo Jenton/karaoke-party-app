@@ -21,6 +21,17 @@ function partyApi() {
       res.setHeader('Cache-Control', 'no-store')
       res.end(JSON.stringify(obj))
     }
+    if (req.url.startsWith('/api/lyrics')) {
+      // Proxy to LRCLIB (free community lyrics database, no API key needed)
+      const q = new URL(req.url, 'http://x').searchParams.get('q') || ''
+      fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q), {
+        headers: { 'User-Agent': 'karaoke-party-app (personal party use)' },
+      })
+        .then((r) => r.json())
+        .then((list) => send(Array.isArray(list) ? list : []))
+        .catch(() => send([], 502))
+      return
+    }
     if (req.url.startsWith('/api/info')) return send({ addresses: lanAddresses() })
     if (req.url.startsWith('/api/state')) {
       if (req.method === 'GET') return send(state)

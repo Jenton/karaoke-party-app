@@ -19,6 +19,7 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
   }
 
   useImperativeHandle(ref, () => ({
+    getTime: () => player.current?.getCurrentTime?.() ?? 0,
     restart: () => {
       player.current?.seekTo?.(0, true)
       player.current?.playVideo?.()
