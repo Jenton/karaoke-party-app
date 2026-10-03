@@ -20,6 +20,7 @@ export function useSharedState() {
   const rev = useRef(-1)
   const inFlight = useRef(0)
   const online = useRef(false)
+  const lastChange = useRef(0) // when we last changed something locally
 
   const apply = (s) => {
     stateRef.current = s
@@ -49,12 +50,14 @@ export function useSharedState() {
     if (!HAS_SERVER) return
     let stop = false
     const tick = async () => {
+      const requestedAt = Date.now()
       try {
         const r = await fetch('/api/state')
         if (!r.ok || !r.headers.get('content-type')?.includes('json')) throw new Error('offline')
         const data = await r.json()
         online.current = true
-        if (inFlight.current === 0 && data.rev !== rev.current) {
+        // skip snapshots that are older than a change we made while the request was in flight
+        if (inFlight.current === 0 && data.rev !== rev.current && lastChange.current <= requestedAt) {
           const firstContact = rev.current === -1
           rev.current = data.rev
           if (firstContact && data.rev === 0) push(stateRef.current) // seed server with saved state
@@ -75,6 +78,7 @@ export function useSharedState() {
   // update(fn): fn receives the latest state and returns the new one.
   const update = useCallback(
     (fn) => {
+      lastChange.current = Date.now()
       const next = fn(stateRef.current)
       apply(next)
       push(next)

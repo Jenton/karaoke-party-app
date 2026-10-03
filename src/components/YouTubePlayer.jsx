@@ -2,12 +2,13 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { loadYouTubeApi } from '../lib/youtube.js'
 
 // Wraps the YouTube Iframe API. Loads `videoId` whenever it changes and calls onEnded at the end.
-const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError }, ref) {
+const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }, ref) {
   const mount = useRef(null)
   const player = useRef(null)
   const latest = useRef({ videoId, autoplay, onEnded })
-  latest.current = { videoId, autoplay, onEnded, onPlayingChange, onError }
+  latest.current = { videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
   const loadedId = useRef(null)
+  const hasStarted = useRef(null) // the video id we last asked to *play* (not just cue)
 
   const sync = () => {
     const p = player.current
@@ -16,6 +17,7 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
     loadedId.current = id
     if (id) auto ? p.loadVideoById(id) : p.cueVideoById(id)
     else p.stopVideo()
+    if (id && auto) hasStarted.current = id
   }
 
   useImperativeHandle(ref, () => ({
@@ -48,7 +50,9 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
   // create the player once
   useEffect(() => {
     let cancelled = false
+    const watchdog = setTimeout(() => { if (!window.YT?.Player && !cancelled) latest.current.onApiFailed?.() }, 8000)
     loadYouTubeApi().then((YT) => {
+      clearTimeout(watchdog)
       if (cancelled) return
       const el = document.createElement('div')
       mount.current.appendChild(el)
@@ -66,11 +70,14 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
           },
           // 2 bad id, 5 html5 error, 100 removed/private, 101/150 embedding not allowed
           onError: (e) => latest.current.onError?.(e.data),
+          // the browser refused to start playback by itself
+          onAutoplayBlocked: () => latest.current.onBlocked?.(),
         },
       })
     })
     return () => {
       cancelled = true
+      clearTimeout(watchdog)
       player.current?.destroy?.()
       player.current = null
     }
@@ -78,7 +85,12 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
 
   // autoplay turned on while the video is already cued (tap-to-start, or the end of the get-ready countdown)
   useEffect(() => {
-    if (autoplay && loadedId.current && loadedId.current === latest.current.videoId) player.current?.playVideo?.()
+    const p = player.current
+    const id = latest.current.videoId
+    if (autoplay && id && p?.loadVideoById && hasStarted.current !== id) {
+      hasStarted.current = id
+      p.loadVideoById(id)
+    }
   }, [autoplay])
 
   // swap the video when the song changes

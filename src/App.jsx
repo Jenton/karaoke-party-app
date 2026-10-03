@@ -65,6 +65,7 @@ export default function App() {
   const player = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [playerError, setPlayerError] = useState(null) // YouTube error code, or null
+  const [apiFailed, setApiFailed] = useState(false) // the YouTube script never loaded (offline / blocked)
   const [needsTap, setNeedsTap] = useState(false) // the browser/YouTube didn't start the video by itself
   // the visualizer is the default; the video keeps playing (and supplying the sound) underneath it
   const [stageMode, setStageMode] = useState(() => {
@@ -249,7 +250,7 @@ export default function App() {
       {/* the stage: video (or visualizer) with karaoke lyrics on top */}
       <main className="flex flex-col items-center gap-3 lg:flex-1 lg:min-h-0">
         <div className={`${stageWidth} relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl`}>
-          <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} />
+          <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} onBlocked={() => setNeedsTap(true)} onApiFailed={() => setApiFailed(true)} />
           {stageMode === 'visualizer' && (
             <div className="absolute inset-0 z-[5] bg-[#1a0b2e]">
               <Visualizer playing={playing} />
@@ -284,6 +285,14 @@ export default function App() {
                     <button className="big-btn bg-white/20 text-white" onClick={() => { setPlayerError(null); actions.next() }}>Remove this song</button>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+          {apiFailed && (
+            <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/95 text-white text-center p-6">
+              <div className="max-w-xl">
+                <p className="text-2xl sm:text-4xl font-bold">😕 Couldn't load YouTube</p>
+                <p className="mt-3 text-lg opacity-80">Check the internet connection, and that an ad blocker or privacy shield isn't blocking youtube.com. Then reload the page.</p>
               </div>
             </div>
           )}
