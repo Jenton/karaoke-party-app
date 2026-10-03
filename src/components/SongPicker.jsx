@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addSinger, clearSingers, getSingers, onSingersChange, removeSinger } from '../lib/singers.js'
-import { SignIn } from './LibraryAdmin.jsx'
 import { GROUPS, genreGroup } from '../lib/genres.js'
 
 const VIEW_KEY = 'karaoke-picker-view'
@@ -8,7 +7,7 @@ const loadView = () => {
   try { return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list' } catch { return 'list' } // list is the default
 }
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
-export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
+export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = [], admin = false, canEdit = true, onRemove, onRename, dbError = '' }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [view, setViewState] = useState(loadView) // 'grid' (thumbnails) or 'list' (title + artist only)
@@ -39,6 +38,14 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
   }, [library, search, category])
   const filtering = search.trim() || category !== 'All'
 
+  const remove = (song) => {
+    if (window.confirm(`Remove "${song.title}" from the library?`)) onRemove?.(song)
+  }
+  const rename = (song) => {
+    const title = window.prompt('Song title', song.title)
+    if (title?.trim() && title.trim() !== song.title) onRename?.(song, title.trim())
+  }
+
   const confirm = (name) => {
     const who = (name ?? singer).trim() // may be empty: they can be named later from the queue
     if (who) addSinger(who)
@@ -50,12 +57,9 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
   return (
     <div>
       {admin && (
-        <div className="rounded-2xl bg-rose-100 text-rose-900 p-3 mb-4 space-y-2">
-          <p className="font-bold">🛠️ Admin mode: tap 🗑️ on a song to remove it from the library. Turn admin off to pick songs again.</p>
-          {dbError && <p className="text-sm">{dbError}</p>}
-          {adminNeedsSignIn && (
-            <div className="max-w-sm"><SignIn auth={adminNeedsSignIn} /></div>
-          )}
+        <div className="rounded-2xl bg-rose-100 text-rose-900 p-3 mb-4">
+          <p className="font-bold">🛠️ Managing the song library: {canEdit ? '✏️ renames a song, 🗑️ removes it. Tap Done when you\'re finished.' : 'sign in above to rename or remove songs.'}</p>
+          {dbError && <p className="text-sm mt-1">{dbError}</p>}
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -132,17 +136,10 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                     ＋ Add
                   </span>
                 )}
-                {admin && (
-                  <span
-                    role="button"
-                    aria-label={`Remove ${s.title}`}
-                    className="shrink-0 w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl cursor-pointer hover:bg-rose-700"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (window.confirm(`Remove "${s.title}" from the library?`)) onRemove?.(s)
-                    }}
-                  >
-                    🗑️
+                {admin && canEdit && (
+                  <span className="shrink-0 flex gap-2">
+                    <span role="button" aria-label={`Rename ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-violet-200 text-xl cursor-pointer hover:bg-violet-300" onClick={(e) => { e.stopPropagation(); rename(s) }}>✏️</span>
+                    <span role="button" aria-label={`Remove ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl cursor-pointer hover:bg-rose-700" onClick={(e) => { e.stopPropagation(); remove(s) }}>🗑️</span>
                   </span>
                 )}
               </button>
@@ -159,17 +156,10 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
           >
             <div className="relative aspect-video bg-violet-200">
               <img loading="lazy" alt="" src={`https://i.ytimg.com/vi/${s.videoId}/mqdefault.jpg`} className="w-full h-full object-cover" />
-              {admin && (
-                <span
-                  role="button"
-                  aria-label={`Remove ${s.title}`}
-                  className="absolute top-2 right-2 w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl shadow cursor-pointer hover:bg-rose-700"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (window.confirm(`Remove "${s.title}" from the library?`)) onRemove?.(s)
-                  }}
-                >
-                  🗑️
+              {admin && canEdit && (
+                <span className="absolute top-2 right-2 flex gap-2">
+                  <span role="button" aria-label={`Rename ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-violet-200 text-xl shadow cursor-pointer hover:bg-violet-300" onClick={(e) => { e.stopPropagation(); rename(s) }}>✏️</span>
+                  <span role="button" aria-label={`Remove ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-rose-600 text-white text-xl shadow cursor-pointer hover:bg-rose-700" onClick={(e) => { e.stopPropagation(); remove(s) }}>🗑️</span>
                 </span>
               )}
               {!admin && queuedIds.includes(s.videoId) && (

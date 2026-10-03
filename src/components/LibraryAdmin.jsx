@@ -86,11 +86,6 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
     setLink(''); setLinkTitle(''); setLinkArtist(''); setLinkGenre(''); setError('')
   }
 
-  const rename = (s) => {
-    const title = window.prompt('Song title', s.title)
-    if (title?.trim()) save(library.map((x) => (x.videoId === s.videoId ? { ...x, title: title.trim() } : x)))
-  }
-
   const tab = (id, label) => (
     <button className={`big-btn !py-2 !text-base ${mode === id ? 'bg-violet-600 text-white' : 'bg-violet-100'}`} onClick={() => { setMode(id); setError('') }}>{label}</button>
   )
@@ -98,7 +93,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   if (!canEdit) {
     return (
       <section className="card space-y-3">
-        <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
+        <h2 className="text-2xl font-bold text-violet-700">➕ Add songs to the library</h2>
         {dbError && <p className="text-amber-700 text-sm">{dbError}</p>}
         <SignIn auth={auth} />
       </section>
@@ -107,7 +102,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
 
   return (
     <section className="card space-y-3">
-      <h2 className="text-2xl font-bold text-violet-700">📚 Song library ({library.length})</h2>
+      <h2 className="text-2xl font-bold text-violet-700">➕ Add songs to the library</h2>
       {usingDb && (
         <p className="text-sm text-slate-600">
           Saved to the shared song database ✅{auth?.session?.user?.email ? ` · ${auth.session.user.email} · ` : ' · '}
@@ -183,20 +178,6 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
         </>
       )}
 
-      {library.length > 0 && (
-        <details>
-          <summary className="cursor-pointer font-bold">Manage saved songs</summary>
-          <ul className="space-y-1 mt-2 max-h-72 overflow-y-auto">
-            {library.map((s) => (
-              <li key={s.videoId} className="flex items-center gap-2 text-sm">
-                <span className="flex-1 truncate">{s.title}{s.artist ? ` · ${s.artist}` : ''}</span>
-                <button aria-label="Rename" onClick={() => rename(s)}>✏️</button>
-                <button aria-label="Remove" onClick={() => save(library.filter((x) => x.videoId !== s.videoId))}>🗑️</button>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
     </section>
   )
 }

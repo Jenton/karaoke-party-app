@@ -18,9 +18,9 @@ you just add songs by pasting links.
 Every push to `main` is built and published by `.github/workflows/pages.yml` to
 `https://jenton.github.io/karaoke-party-app/` (one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
 
-The public page is static: it shows the song list from `public/library.json` plus any songs you add with **Paste link** in ➕ Add songs (those are saved in that browser only), finds lyrics directly from LRCLIB, and the
+The public page is static: it shows the song list from `public/library.json` plus any songs you add in the picker's manager (those are saved in that browser only), finds lyrics directly from LRCLIB, and the
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
-To change the list for everyone: build it locally with the ➕ Add songs panel, then `git add public/library.json`, commit and push.
+To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
 
 The starter library (`public/library.json`) has the 30 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
 
@@ -38,24 +38,23 @@ public page shows the same list on any laptop at any location with no git push, 
 5. Locally: put them in `.env` as `VITE_SUPABASE_URL=` and `VITE_SUPABASE_ANON_KEY=` and restart `npm run dev`.
    For the public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** tab → add repository variables
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
-6. Open the app → **➕ Add songs** and sign in with the user from step 3. When you're signed in, the app adds starter songs it hasn't offered yet on that device to the database for you (nothing to click; songs you've removed don't come back). Artists for the starter songs are filled in from the bundled list, so the optional `alter table public.songs add column if not exists artist text;` is only needed if you want artists saved for songs you add yourself.
+6. Open the app, hold **🔧 Manage** in the picker, and sign in with the user from step 3. When you're signed in, the app adds starter songs it hasn't offered yet on that device to the database for you (nothing to click; songs you've removed don't come back). Artists for the starter songs are filled in from the bundled list, so the optional `alter table public.songs add column if not exists artist text;` is only needed if you want artists saved for songs you add yourself.
 
 After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
 Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the
 Wi-Fi drops at the party the app still shows your songs. The queue itself still lives on the screen's laptop only.
 Do **not** put your YouTube API key or the Supabase "service_role" key in the public variables.
 
-## Adding and removing songs
+## Adding and managing songs (all in the song picker)
 
-In the song picker, kids can **search** (title or artist) and filter by **category chips** (Disney & Movies, Dance, Feel-good, Sing-alongs, Throwbacks, Fun & Novelty, Pop). Click **⚙️ Host → ➕ Add songs**. Anyone can pick songs; adding is open to whoever is signed in on that device (sign in once and it's remembered). **Song library** offers:
+Everything lives in **🎵 Pick a song**. Kids search (title or artist), filter by **category chips** (Disney & Movies, Dance, Feel-good, Sing-alongs, Throwbacks, Fun & Novelty, Pop) and tap **＋ Add**.
 
-- **YouTube search** (defaults to "kidz bop karaoke"): results are limited to embeddable, kid-safe (SafeSearch strict) videos.
-- **Playlist**: paste a playlist link or ID (up to 200 videos). It's pre-filled with the official KIDZ BOP Karaoke playlist, so with an API key, click **Load** then **Add all** to import the whole thing.
-- **Paste link**: add one video, optionally with an artist and a category; the title is filled in automatically when possible (or type your own), with a thumbnail preview.
+To manage the library, **hold the small 🔧 Manage button for about a second** in the picker's top bar (a plain tap does nothing, so kids don't wander in), or use **⚙️ Host → 🛠️ Manage song library**. The picker turns into the manager:
 
-Use **＋** per song or **Add all**. Titles are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"); use
-**Manage saved songs** to rename or remove. The list is saved in `public/library.json`, so it's still there next time (commit it if you like).
-**Removing songs:** open **⚙️ Host → 🛠️ Remove songs**. Every song gets a 🗑️ button (it asks to confirm), and **Done removing** takes you back. The kids' picker has no admin or add buttons. Admin mode needs no password; with the shared database you just need to be signed in once on that device (the sign-in form appears right there if you aren't). Turn Admin off, or close the picker, to go back to picking.
+- An **Add songs to the library** card at the top: **YouTube search** (defaults to "kidz bop karaoke", embeddable and kid-safe results only), **Playlist** (paste a link or ID, up to 200 videos, then **Add all**), or **Paste link** (one video, optional artist and category; the title is filled in automatically when possible, with a thumbnail preview).
+- Every song in the list gets **✏️ rename** and **🗑️ remove** buttons (removing asks to confirm). Tap **✅ Done** to go back to picking.
+
+New songs show up in the list straight away; use **＋ Add** on them to queue them. No password is needed; with the shared database you just sign in once per device (the sign-in form appears in the manager if you aren't). Titles from YouTube are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"). Without a database the list is `public/library.json` on your laptop (commit it if you like).
 
 Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily quota is plenty.
 
@@ -63,10 +62,10 @@ Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily 
 
 1. Plug the laptop into the screen, run the app, drag its window to the screen and press F11 for full screen.
 2. Click **Tap to start the party** once (browsers need a click before they allow sound).
-3. The screen is all stage: a colourful **visualizer** (the default) or the music video, with karaoke lyrics drawn over the bottom of it, and who's singing plus the next singer underneath. **🎬 Show video / 🌈 Visualizer** in the top bar switches (the choice is remembered). The video keeps playing, and supplying the sound, behind the visualizer. Under the stage: a **seek bar** (drag or click to jump anywhere), **⏪ 10s / ⏸️ Pause / 10s ⏩**, 🔁 Restart and ⏭️ Next. Laptop shortcuts: **Space** pause/play, **← / →** back/forward 10 seconds. The visualizer dances to the real music while the key changer is on, otherwise to a built-in beat. If YouTube refuses to play a video, the stage says so and skips to the next song. The top bar has just two buttons: **🎵 Pick a song** for the kids (each song has a **＋ Add** button that puts it straight in the queue with no name needed, or tap the song to also say who's singing; a message tells them where they are in line; a **🖼️ Pictures / ☰ List** switch lets you hide the thumbnails and show just titles and artists) and **⚙️ Host** for you: **🎟️ Queue**, **📜 Lyrics** (find/replace lyrics, size, timing), **🎚️ Key**, **➕ Add songs**, **🛠️ Remove songs**, the video/visualizer switch and full screen. Queue, Lyrics, Key and Add songs slide in from the side and close again. Before each song a "Get ready, Mia! 3-2-1" card gives the singer time to grab the mic (**Start now ▶** skips it).
+3. The screen is all stage: a colourful **visualizer** (the default) or the music video, with karaoke lyrics drawn over the bottom of it, and who's singing plus the next singer underneath. **🎬 Show video / 🌈 Visualizer** in the top bar switches (the choice is remembered). The video keeps playing, and supplying the sound, behind the visualizer. Under the stage: a **seek bar** (drag or click to jump anywhere), **⏪ 10s / ⏸️ Pause / 10s ⏩**, 🔁 Restart and ⏭️ Next. Laptop shortcuts: **Space** pause/play, **← / →** back/forward 10 seconds. The visualizer dances to the real music while the key changer is on, otherwise to a built-in beat. If YouTube refuses to play a video, the stage says so and skips to the next song. The top bar has just two buttons: **🎵 Pick a song** for the kids (each song has a **＋ Add** button that puts it straight in the queue with no name needed, or tap the song to also say who's singing; a message tells them where they are in line; a **🖼️ Pictures / ☰ List** switch lets you hide the thumbnails and show just titles and artists) and **⚙️ Host** for you: **🎟️ Queue**, **📜 Lyrics** (find/replace lyrics, size, timing), **🎚️ Key**, **🛠️ Manage song library**, the video/visualizer switch and full screen. Queue, Lyrics and Key slide in from the side and close again. Before each song a "Get ready, Mia! 3-2-1" card gives the singer time to grab the mic (**Start now ▶** skips it).
 4. **Lyrics are found automatically** (only when the match has the same title and artist, so KIDZ BOP-style covers with no real artist wait for you to tap Find lyrics) and **explicit words are always shown as [bloop]** on the stage. Details: (from [LRCLIB](https://lrclib.net), a free lyrics database) when a song starts. With timed lyrics, the current line fills with colour like a real karaoke video and the next line is shown below it; without timing, the full lyrics sit in a panel that scrolls with the song. In **📜 Lyrics** use 🔍 Find lyrics to retry, ↻ Try another if the match is wrong, paste your own, and Timing earlier/later if it's off. The laptop needs internet for this.
 5. When a song ends, the next one starts after 3 seconds (toggle **Auto-play next**).
-6. Optional: phones on the same Wi-Fi can open the link shown under ➕ Add songs (`http://<laptop-ip>:5173/?remote`) to pick songs from the library too.
+6. Optional: phones on the same Wi-Fi can open the link shown in **⚙️ Host → 🎟️ Queue** (`http://<laptop-ip>:5173/?remote`) to pick songs from the library too.
 
 ## Singer names
 
