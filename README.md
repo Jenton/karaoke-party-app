@@ -22,7 +22,7 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
 
-The starter library (`public/library.json`) has the 36 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
+The starter library (`public/library.json`) has the 38 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
 
 ## Shared song database (Supabase): same list at any location
 
@@ -47,7 +47,7 @@ Do **not** put your YouTube API key or the Supabase "service_role" key in the pu
 
 ## Adding and managing songs (all in the song picker)
 
-Everything lives in **🎵 Pick a song**. Kids search (title or artist), filter by **category chips** (Disney & Movies, Dance, Feel-good, Sing-alongs, Throwbacks, Fun & Novelty, Pop) and tap **＋ Add**.
+Everything lives in **🎵 Pick a song**. Kids search (title or artist), filter by **category chips** (Disney & Movies, Dance, Feel-good, Sing-alongs, Throwbacks, Fun & Novelty, Pop, Karaoke) and tap **＋ Add**.
 
 To manage the library, **hold the small 🔧 Manage button for about a second** in the picker's top bar (a plain tap does nothing, so kids don't wander in), or use **⚙️ Host → 🛠️ Manage song library**. The picker turns into the manager:
 

@@ -8,7 +8,7 @@ import HoldButton from './components/HoldButton.jsx'
 import SeekBar from './components/SeekBar.jsx'
 import Visualizer from './components/Visualizer.jsx'
 import { useLyrics } from './hooks/useLyrics.js'
-import { RETIRED_STARTERS } from './lib/retired.js'
+import { RENAMED_STARTERS, RETIRED_STARTERS } from './lib/retired.js'
 import { addSinger, clearSingers } from './lib/singers.js'
 import EditableName from './components/EditableName.jsx'
 import PitchControls from './components/PitchControls.jsx'
@@ -43,6 +43,16 @@ export default function App() {
     const stale = library.filter((s) => RETIRED_STARTERS.includes(s.videoId))
     if (!stale.length) return localStorage.setItem(FLAG, '1')
     saveLibrary(library.filter((s) => !RETIRED_STARTERS.includes(s.videoId))).then((ok) => ok && localStorage.setItem(FLAG, '1'))
+  }, [usingDb, canEdit, loaded, libraryError, library, saveLibrary])
+
+  // When signed in, bring renamed starter songs' titles in the database up to date, once per device.
+  useEffect(() => {
+    if (!usingDb || !canEdit || !loaded || libraryError) return
+    const FLAG = 'karaoke-renamed-v1'
+    if (localStorage.getItem(FLAG)) return
+    const stale = library.filter((s) => RENAMED_STARTERS[s.videoId] && RENAMED_STARTERS[s.videoId] !== s.title)
+    if (!stale.length) return localStorage.setItem(FLAG, '1')
+    saveLibrary(library.map((s) => (RENAMED_STARTERS[s.videoId] ? { ...s, title: RENAMED_STARTERS[s.videoId] } : s))).then((ok) => ok && localStorage.setItem(FLAG, '1'))
   }, [usingDb, canEdit, loaded, libraryError, library, saveLibrary])
 
   // When signed in, put starter songs we haven't offered yet into the database for you. We remember which starters
