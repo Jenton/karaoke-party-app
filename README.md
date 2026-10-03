@@ -22,7 +22,7 @@ The public page is static: it shows the song list from `public/library.json` plu
 queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
 To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
 
-The starter library (`public/library.json`) has the 30 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
+The starter library (`public/library.json`) has the 34 popular songs you supplied (artist is saved with each song and used to find lyrics). None of the video IDs have been checked for embedding.
 
 ## Shared song database (Supabase): same list at any location
 
