@@ -12,6 +12,7 @@ import * as Tone from 'tone'
 let stream = null
 let source = null
 let shifter = null
+let analyser = null
 
 export const isPitchEngineSupported = () =>
   !!navigator.mediaDevices?.getDisplayMedia && /Chrome|Edg/.test(navigator.userAgent)
@@ -34,6 +35,11 @@ export async function startPitchEngine(onStopped) {
   shifter = new Tone.PitchShift({ pitch: 0, windowSize: 0.1, delayTime: 0, feedback: 0 }).toDestination()
   source = Tone.getContext().rawContext.createMediaStreamSource(stream)
   Tone.connect(source, shifter)
+  // a side tap so the visualizer can react to the music while the key changer is on
+  analyser = Tone.getContext().rawContext.createAnalyser()
+  analyser.fftSize = 128
+  analyser.smoothingTimeConstant = 0.8
+  source.connect(analyser)
   // User clicked the browser's own "Stop sharing" button
   stream.getTracks().forEach((t) =>
     t.addEventListener('ended', () => {
@@ -43,6 +49,9 @@ export async function startPitchEngine(onStopped) {
   )
 }
 
+// AnalyserNode for the captured audio (null unless the key changer is on)
+export const getAnalyser = () => analyser
+
 export function setSemitones(n) {
   if (shifter) shifter.pitch = n
 }
@@ -51,5 +60,6 @@ export function stopPitchEngine() {
   stream?.getTracks().forEach((t) => t.stop())
   source?.disconnect()
   shifter?.dispose()
-  stream = source = shifter = null
+  analyser?.disconnect()
+  stream = source = shifter = analyser = null
 }

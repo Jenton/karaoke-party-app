@@ -3,6 +3,7 @@ create table if not exists public.songs (
   video_id   text primary key,
   title      text not null,
   artist     text,
+  genre      text,
   created_at timestamptz not null default now()
 );
 
@@ -22,3 +23,4 @@ create policy "signed-in users can delete"
 
 -- Already ran an older version of this file? Add the artist column with:
 --   alter table public.songs add column if not exists artist text;
+--   alter table public.songs add column if not exists genre text;

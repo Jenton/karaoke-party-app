@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { HAS_SERVER } from '../lib/env.js'
+import { GROUPS } from '../lib/genres.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 
 // Build the curated song list from YouTube search, a playlist, or a pasted link.
@@ -33,6 +34,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const [link, setLink] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
   const [linkArtist, setLinkArtist] = useState('')
+  const [linkGenre, setLinkGenre] = useState('')
 
   useEffect(() => {
     if (!HAS_SERVER) return
@@ -55,7 +57,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const add = (items) => {
     const fresh = items
       .filter((i) => !have.has(i.videoId))
-      .map((i) => ({ videoId: i.videoId, title: i.artist !== undefined ? i.title : displayTitle(i.title), ...(i.artist ? { artist: i.artist } : {}) }))
+      .map((i) => ({ videoId: i.videoId, title: i.artist !== undefined ? i.title : displayTitle(i.title), ...(i.artist ? { artist: i.artist } : {}), ...(i.genre ? { genre: i.genre } : {}) }))
     if (fresh.length) save([...library, ...fresh])
   }
 
@@ -80,8 +82,8 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
     if (!videoId) return setError("That doesn't look like a YouTube link.")
     if (!linkTitle.trim()) return setError('Give it a title.')
     if (have.has(videoId)) return setError('That song is already in the library.')
-    add([{ videoId, title: linkTitle.trim(), artist: linkArtist.trim() }])
-    setLink(''); setLinkTitle(''); setLinkArtist(''); setError('')
+    add([{ videoId, title: linkTitle.trim(), artist: linkArtist.trim(), genre: linkGenre }])
+    setLink(''); setLinkTitle(''); setLinkArtist(''); setLinkGenre(''); setError('')
   }
 
   const rename = (s) => {
@@ -151,6 +153,10 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
           )}
           <input className="field" placeholder="Song title (filled in automatically if possible)" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
           <input className="field" placeholder="Artist (optional, helps find lyrics)" value={linkArtist} onChange={(e) => setLinkArtist(e.target.value)} />
+          <select className="field" value={linkGenre} onChange={(e) => setLinkGenre(e.target.value)} aria-label="Category">
+            <option value="">Category (optional)</option>
+            {GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
           <button className="big-btn !py-2 w-full bg-pink-500 text-white">Add to library</button>
         </form>
       )}

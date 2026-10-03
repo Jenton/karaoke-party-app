@@ -25,8 +25,14 @@ const applyEdits = (base, { added, removed }) => {
   return [...kept, ...added.filter((s) => !baseIds.has(s.videoId))]
 }
 
-const sameSong = (a, b) => a && b && a.title === b.title && (a.artist ?? '') === (b.artist ?? '')
-const fromRow = (r) => ({ videoId: r.video_id, title: r.title, ...(r.artist ? { artist: r.artist } : {}) })
+const sameSong = (a, b) =>
+  a && b && a.title === b.title && (a.artist ?? '') === (b.artist ?? '') && (a.genre ?? '') === (b.genre ?? '')
+const fromRow = (r) => ({
+  videoId: r.video_id,
+  title: r.title,
+  ...(r.artist ? { artist: r.artist } : {}),
+  ...(r.genre ? { genre: r.genre } : {}),
+})
 
 // The curated song list. Where it lives, in order of preference:
 //  1. Supabase database (if VITE_SUPABASE_* is set): shared by every device, same list at any location.
@@ -42,7 +48,7 @@ export function useLibrary() {
   const dbOk = useRef(false)
   const artistCol = useRef(true) // false if the database was created before the artist column existed
   const [starters, setStarters] = useState([])
-  const artists = useRef(new Map()) // videoId -> artist from the bundled list, for songs saved without one
+  const meta = useRef(new Map()) // videoId -> { artist, genre } from the bundled list, for songs saved without them
 
   const setLibrary = (list) => {
     current.current = list
@@ -61,14 +67,14 @@ export function useLibrary() {
     try {
       if (supabase) {
         try {
-          let res = await supabase.from('songs').select('video_id,title,artist').order('created_at')
-          if (res.error && /artist/i.test(res.error.message)) {
+          let res = await supabase.from('songs').select('video_id,title,artist,genre').order('created_at')
+          if (res.error && /artist|genre/i.test(res.error.message)) {
             artistCol.current = false
             res = await supabase.from('songs').select('video_id,title').order('created_at')
           }
           const { data, error: err } = res
           if (err) throw err
-          const list = data.map(fromRow).map((s) => (s.artist || !artists.current.has(s.videoId) ? s : { ...s, artist: artists.current.get(s.videoId) }))
+          const list = data.map(fromRow).map((s) => ({ ...meta.current.get(s.videoId), ...s }))
           dbOk.current = true
           writeJson(CACHE_KEY, list)
           setLibrary(list)
@@ -95,7 +101,7 @@ export function useLibrary() {
     // the bundled list first (so artists can be filled in), then the database
     const start = supabase ? loadFile().catch(() => []) : Promise.resolve([])
     start.then((list) => {
-      artists.current = new Map(list.filter((s) => s.artist).map((s) => [s.videoId, s.artist]))
+      meta.current = new Map(list.map((s) => [s.videoId, { artist: s.artist, genre: s.genre }]))
       setStarters(list)
       reload()
     })
@@ -110,7 +116,7 @@ export function useLibrary() {
         const prevById = new Map(prev.map((s) => [s.videoId, s]))
         const upserts = next
           .filter((s) => !sameSong(prevById.get(s.videoId), s))
-          .map((s) => ({ video_id: s.videoId, title: s.title, ...(artistCol.current ? { artist: s.artist ?? null } : {}) }))
+          .map((s) => ({ video_id: s.videoId, title: s.title, ...(artistCol.current ? { artist: s.artist ?? null, genre: s.genre ?? null } : {}) }))
         const removed = prev.filter((s) => !next.some((n) => n.videoId === s.videoId)).map((s) => s.videoId)
         try {
           if (upserts.length) {

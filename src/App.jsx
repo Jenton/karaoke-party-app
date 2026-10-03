@@ -3,7 +3,10 @@ import { useSharedState } from './hooks/useSharedState.js'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
 import AddSongForm from './components/AddSongForm.jsx'
 import Queue from './components/Queue.jsx'
-import Lyrics from './components/Lyrics.jsx'
+import LyricsOverlay from './components/LyricsOverlay.jsx'
+import LyricsPanel from './components/LyricsPanel.jsx'
+import Visualizer from './components/Visualizer.jsx'
+import { useLyrics } from './hooks/useLyrics.js'
 import PitchControls from './components/PitchControls.jsx'
 import SongPicker from './components/SongPicker.jsx'
 import LibraryAdmin from './components/LibraryAdmin.jsx'
@@ -17,7 +20,7 @@ const isRemote = new URLSearchParams(location.search).has('remote')
 export default function App() {
   const [state, update] = useSharedState()
   const [started, setStarted] = useState(false)
-  const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'add' | null
+  const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'add' | 'lyrics' | null
   const [picking, setPicking] = useState(false)
   const [adminMode, setAdminMode] = useState(false) // lets you remove songs from the picker
   const { library, save: saveLibrary, reload, loaded, error: libraryError, missingStarters, addStarters, usingDb } = useLibrary()
@@ -34,6 +37,16 @@ export default function App() {
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
   const player = useRef(null)
+  const [playing, setPlaying] = useState(false)
+  const [playerError, setPlayerError] = useState(false)
+  // the visualizer is the default; the video keeps playing (and supplying the sound) underneath it
+  const [stageMode, setStageMode] = useState(() => {
+    try { return localStorage.getItem('karaoke-stage-mode') === 'video' ? 'video' : 'visualizer' } catch { return 'visualizer' }
+  })
+  const setMode = (m) => {
+    setStageMode(m)
+    try { localStorage.setItem('karaoke-stage-mode', m) } catch { /* ignore */ }
+  }
   const { queue, current } = state
 
   const actions = {
@@ -63,8 +76,16 @@ export default function App() {
       update((s) => (s.current ? { ...s, current: { ...s.current, ...patch } } : s)),
   }
 
+  const lyrics = useLyrics(isRemote ? null : current, actions.patchCurrent)
+
   // each new song starts in its original key
-  useEffect(() => setSemitones(0), [current?.id])
+  useEffect(() => { setSemitones(0); setPlayerError(false) }, [current?.id])
+
+  // the video can't be seen in visualizer mode, so say so (and move on) when YouTube refuses to play it
+  const onPlayerError = () => {
+    setPlayerError(true)
+    setTimeout(() => { setPlayerError(false); actions.next() }, 3500)
+  }
 
   useEffect(() => {
     if (!HAS_SERVER) return
@@ -93,6 +114,8 @@ export default function App() {
     </button>
   )
 
+  const stageWidth = 'w-full lg:w-[min(100%,calc((100vh-12rem)*1.7778))]'
+
   return (
     <div className="flex flex-col p-3 sm:p-4 gap-3 lg:h-screen lg:overflow-hidden">
       {/* slim toolbar: everything except the stage is a secondary control */}
@@ -102,60 +125,67 @@ export default function App() {
           🎵 Pick a song
         </button>
         {tool('queue', '🎟️ Queue', queue.length ? ` (${queue.length})` : '')}
+        {tool('lyrics', '📜 Lyrics')}
         {tool('key', semitones ? `🎚️ Key ${semitones > 0 ? '+' : ''}${semitones}` : '🎚️ Key')}
         {tool('add', '➕ Add songs')}
+        <button
+          className="rounded-xl px-3 py-2 text-sm sm:text-base font-semibold bg-white/20 text-white hover:bg-white/30"
+          onClick={() => setMode(stageMode === 'visualizer' ? 'video' : 'visualizer')}
+          title="Switch between the music video and the colourful visualizer"
+        >
+          {stageMode === 'visualizer' ? '🎬 Show video' : '🌈 Visualizer'}
+        </button>
         <button className="rounded-xl px-3 py-2 bg-white/20 text-white hover:bg-white/30" onClick={toggleFullscreen} aria-label="Full screen" title="Full screen">⛶</button>
       </header>
 
-      {/* the stage: video + lyrics take the whole screen */}
-      <main className="grid gap-3 lg:gap-4 lg:flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <section className="flex flex-col gap-3 min-w-0 lg:min-h-0">
-          <div className="relative aspect-video w-full rounded-3xl overflow-hidden bg-black shadow-2xl">
-            <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started} onEnded={onEnded} />
-            {!started && (
-              <button
-                onClick={() => setStarted(true)}
-                className="absolute inset-0 grid place-items-center bg-violet-900/90 text-white text-3xl sm:text-5xl font-bold hover:bg-violet-800 transition"
-              >
-                🎉 Tap to start the party!
-              </button>
-            )}
-            {started && !current && (
-              <div className="absolute inset-0 grid place-items-center bg-violet-900/90 text-white text-center p-6">
-                <div>
-                  <p className="text-3xl sm:text-5xl font-bold mb-6">Who's up next? 🎶</p>
-                  <button className="big-btn !text-2xl !px-8 bg-yellow-300 text-violet-800" onClick={openPicker}>🎵 Pick a song!</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-2xl bg-white/90 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="min-w-0 mr-auto">
-              <p className="text-xl sm:text-3xl lg:text-5xl font-bold truncate">{current ? current.title : 'Waiting for a singer…'}</p>
-              {current && <p className="text-base sm:text-xl lg:text-3xl text-pink-600 font-semibold">🎤 {current.singer}</p>}
-            </div>
-            <div className="flex gap-2">
-              <button className="rounded-lg px-3 py-1.5 bg-sky-100 text-sky-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.restart()}>🔁 Restart</button>
-              <button className="rounded-lg px-3 py-1.5 bg-green-100 text-green-800 font-semibold disabled:opacity-40" disabled={!current && !queue.length} onClick={actions.next}>⏭️ Next</button>
-            </div>
-          </div>
-
-          {queue.length > 0 && (
-            <div className="rounded-2xl bg-white/20 text-white px-4 py-3 min-h-0 overflow-hidden">
-              <p className="text-sm font-semibold uppercase tracking-wide opacity-80 mb-1">Up next</p>
-              <ol className="space-y-1 text-lg sm:text-xl lg:text-2xl">
-                {queue.slice(0, 4).map((q, i) => (
-                  <li key={q.id} className="truncate"><span className="opacity-70">{i + 1}.</span> <b>{q.singer}</b> · {q.title}</li>
-                ))}
-                {queue.length > 4 && <li className="opacity-70 text-base">+ {queue.length - 4} more</li>}
-              </ol>
+      {/* the stage: video (or visualizer) with karaoke lyrics on top */}
+      <main className="flex flex-col items-center gap-3 lg:flex-1 lg:min-h-0">
+        <div className={`${stageWidth} relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl`}>
+          <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} />
+          {stageMode === 'visualizer' && (
+            <div className="absolute inset-0 z-[5]">
+              <Visualizer playing={playing} />
             </div>
           )}
-        </section>
+          <LyricsOverlay lyrics={lyrics} getTime={() => player.current?.getTime() ?? 0} getDuration={() => player.current?.getDuration() ?? 0} />
+          {playerError && (
+            <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/90 text-white text-center p-6">
+              <p className="text-2xl sm:text-4xl font-bold">😕 This video can't be played here. Skipping…</p>
+            </div>
+          )}
+          {!started && (
+            <button
+              onClick={() => setStarted(true)}
+              className="absolute inset-0 z-20 grid place-items-center bg-violet-900/90 text-white text-3xl sm:text-5xl font-bold hover:bg-violet-800 transition"
+            >
+              🎉 Tap to start the party!
+            </button>
+          )}
+          {started && !current && (
+            <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/90 text-white text-center p-6">
+              <div>
+                <p className="text-3xl sm:text-5xl font-bold mb-6">Who's up next? 🎶</p>
+                <button className="big-btn !text-2xl !px-8 bg-yellow-300 text-violet-800" onClick={openPicker}>🎵 Pick a song!</button>
+              </div>
+            </div>
+          )}
+        </div>
 
-        <div className="min-h-[55vh] lg:min-h-0 min-w-0">
-          <Lyrics song={current} getTime={() => player.current?.getTime() ?? 0} onChange={actions.patchCurrent} />
+        <div className={`${stageWidth} rounded-2xl bg-white/90 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2`}>
+          <div className="min-w-0 mr-auto">
+            <p className="text-xl sm:text-2xl lg:text-4xl font-bold truncate">{current ? current.title : 'Waiting for a singer…'}</p>
+            {current && <p className="text-base sm:text-lg lg:text-2xl text-pink-600 font-semibold">🎤 {current.singer}</p>}
+          </div>
+          {queue[0] && (
+            <p className="text-sm sm:text-base lg:text-lg text-slate-600 truncate max-w-[34%]">
+              Up next: <b>{queue[0].singer}</b> · {queue[0].title}{queue.length > 1 ? ` (+${queue.length - 1})` : ''}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button className="rounded-lg px-3 py-1.5 bg-violet-100 text-violet-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.togglePlay()}>{playing ? '⏸️ Pause' : '▶️ Play'}</button>
+            <button className="rounded-lg px-3 py-1.5 bg-sky-100 text-sky-800 font-semibold disabled:opacity-40" disabled={!current} onClick={() => player.current?.restart()}>🔁 Restart</button>
+            <button className="rounded-lg px-3 py-1.5 bg-green-100 text-green-800 font-semibold disabled:opacity-40" disabled={!current && !queue.length} onClick={actions.next}>⏭️ Next</button>
+          </div>
         </div>
       </main>
 
@@ -174,7 +204,7 @@ export default function App() {
         >
           <div className="flex items-center">
             <h2 className="text-xl font-bold text-violet-800 mr-auto">
-              {{ queue: '🎟️ Queue', key: '🎚️ Key changer', add: '➕ Add songs' }[panel] ?? ''}
+              {{ queue: '🎟️ Queue', lyrics: '📜 Lyrics', key: '🎚️ Key changer', add: '➕ Add songs' }[panel] ?? ''}
             </h2>
             <button className="rounded-lg px-3 py-1 bg-white font-bold" onClick={() => setPanel(null)}>✖ Close</button>
           </div>
@@ -187,6 +217,7 @@ export default function App() {
               </label>
             </>
           )}
+          {panel === 'lyrics' && <LyricsPanel lyrics={lyrics} onChange={actions.patchCurrent} />}
           <div className={panel === 'key' ? '' : 'hidden'}>
             <PitchControls semitones={semitones} onChange={setSemitones} />
           </div>

@@ -47,11 +47,11 @@ Do **not** put your YouTube API key or the Supabase "service_role" key in the pu
 
 ## Adding and removing songs
 
-Click **➕ Add songs** in the top bar (or **➕ Add a song** inside the song picker). Anyone can pick songs; adding is open to whoever is signed in on that device (sign in once and it's remembered). **Song library** offers:
+In the song picker, kids can **search** (title or artist) and filter by **category chips** (Disney & Movies, Dance, Feel-good, Sing-alongs, Pop, KIDZ BOP). Click **➕ Add songs** in the top bar (or **➕ Add a song** inside the song picker). Anyone can pick songs; adding is open to whoever is signed in on that device (sign in once and it's remembered). **Song library** offers:
 
 - **YouTube search** (defaults to "kidz bop karaoke"): results are limited to embeddable, kid-safe (SafeSearch strict) videos.
 - **Playlist**: paste a playlist link or ID (up to 200 videos). It's pre-filled with the official KIDZ BOP Karaoke playlist, so with an API key, click **Load** then **Add all** to import the whole thing.
-- **Paste link**: add one video; the title is filled in automatically when possible (or type your own), with a thumbnail preview.
+- **Paste link**: add one video, optionally with an artist and a category; the title is filled in automatically when possible (or type your own), with a thumbnail preview.
 
 Use **＋** per song or **Add all**. Titles are tidied automatically ("KIDZ BOP Kids - Flowers (Karaoke Version)" becomes "Flowers"); use
 **Manage saved songs** to rename or remove. The list is saved in `public/library.json`, so it's still there next time (commit it if you like).
@@ -63,8 +63,8 @@ Search costs 100 quota units, playlists about 1 per 50 songs, so the free daily 
 
 1. Plug the laptop into the screen, run the app, drag its window to the screen and press F11 for full screen.
 2. Click **Tap to start the party** once (browsers need a click before they allow sound).
-3. The screen is all stage: the video on the left and big lyrics on the right, with who's singing and the next few singers under the video. Everything else is a small button on the top bar: **🎵 Pick a song** (kids tap a song, choose or type their name, and it joins the queue; the first song starts right away), **🎟️ Queue**, **🎚️ Key**, **➕ Add songs**, and **⛶** full screen. Those panels slide in from the side and close again.
-4. **Lyrics are found automatically** (from [LRCLIB](https://lrclib.net), a free lyrics database) when a song starts. Use 🔍 Find lyrics to retry, ↻ Try another if the match is wrong, or ✏️ Edit to paste your own. When timed lyrics exist, the current line is highlighted and scrolls along with the video; use Timing earlier/later if it's off. The laptop needs internet for this.
+3. The screen is all stage: a colourful **visualizer** (the default) or the music video, with karaoke lyrics drawn over the bottom of it, and who's singing plus the next singer underneath. **🎬 Show video / 🌈 Visualizer** in the top bar switches (the choice is remembered). The video keeps playing, and supplying the sound, behind the visualizer; use ⏸️ / 🔁 / ⏭️ under the stage. The visualizer dances to the real music while the key changer is on, otherwise to a built-in beat. If YouTube refuses to play a video, the stage says so and skips to the next song. Everything else is a small button on the top bar: **🎵 Pick a song** (kids tap a song, choose or type their name, and it joins the queue; the first song starts right away), **🎟️ Queue**, **📜 Lyrics** (find/replace lyrics, size, timing), **🎚️ Key**, **➕ Add songs**, and **⛶** full screen. Those panels slide in from the side and close again.
+4. **Lyrics are found automatically** (from [LRCLIB](https://lrclib.net), a free lyrics database) when a song starts. With timed lyrics, the current line fills with colour like a real karaoke video and the next line is shown below it; without timing, the full lyrics sit in a panel that scrolls with the song. In **📜 Lyrics** use 🔍 Find lyrics to retry, ↻ Try another if the match is wrong, paste your own, and Timing earlier/later if it's off. The laptop needs internet for this.
 5. When a song ends, the next one starts after 3 seconds (toggle **Auto-play next**).
 6. Optional: phones on the same Wi-Fi can open the link shown under ➕ Add songs (`http://<laptop-ip>:5173/?remote`) to pick songs from the library too.
 

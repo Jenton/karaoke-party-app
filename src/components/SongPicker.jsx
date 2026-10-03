@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { SignIn } from './LibraryAdmin.jsx'
+import { GROUPS, genreGroup } from '../lib/genres.js'
 
 const SINGERS_KEY = 'karaoke-singers'
 const loadSingers = () => {
@@ -9,14 +10,28 @@ const loadSingers = () => {
 // Big, kid-friendly song grid. Tap a song -> say who's singing -> it joins the queue.
 export default function SongPicker({ library, onPick, queuedIds = [], admin = false, onRemove, adminNeedsSignIn = null, dbError = '' }) {
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('All')
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
   const [singers, setSingers] = useState(loadSingers)
 
+  // category chips: only the groups that actually have songs
+  const counts = useMemo(() => {
+    const c = {}
+    for (const s of library) c[genreGroup(s.genre)] = (c[genreGroup(s.genre)] ?? 0) + 1
+    return c
+  }, [library])
+  const categories = [...GROUPS, 'Other'].filter((g) => counts[g])
+
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return q ? library.filter((s) => `${s.title} ${s.artist ?? ''}`.toLowerCase().includes(q)) : library
-  }, [library, search])
+    return library.filter(
+      (s) =>
+        (category === 'All' || genreGroup(s.genre) === category) &&
+        (!q || `${s.title} ${s.artist ?? ''}`.toLowerCase().includes(q)),
+    )
+  }, [library, search, category])
+  const filtering = search.trim() || category !== 'All'
 
   const confirm = (name) => {
     const who = (name ?? singer).trim() || 'Mystery Singer'
@@ -39,16 +54,42 @@ export default function SongPicker({ library, onPick, queuedIds = [], admin = fa
           )}
         </div>
       )}
-      <input
-        className="field !text-xl !py-3 mb-4"
-        placeholder="🔍 Search songs…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          className="field !text-xl !py-3 flex-1 min-w-[12rem]"
+          placeholder="🔍 Search by song or artist…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {search && (
+          <button className="big-btn !py-2 bg-white/80" onClick={() => setSearch('')} aria-label="Clear search">✖</button>
+        )}
+      </div>
+      {categories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-3" role="tablist" aria-label="Filter by category">
+          {['All', ...categories].map((g) => (
+            <button
+              key={g}
+              role="tab"
+              aria-selected={category === g}
+              onClick={() => setCategory(g)}
+              className={`shrink-0 rounded-full px-4 py-2 font-bold text-base transition ${category === g ? 'bg-yellow-300 text-violet-800' : 'bg-white/30 text-white hover:bg-white/40'}`}
+            >
+              {g}{g !== 'All' ? ` (${counts[g]})` : ` (${library.length})`}
+            </button>
+          ))}
+        </div>
+      )}
       {library.length === 0 && (
         <p className="text-lg text-slate-600 text-center py-10">
           No songs yet! Tap <b>➕ Add a song</b> to start the song list.
         </p>
+      )}
+      {library.length > 0 && shown.length === 0 && (
+        <div className="text-center text-white py-10">
+          <p className="text-2xl font-bold mb-3">No songs match{search ? ` “${search}”` : ''} 🤔</p>
+          <button className="big-btn bg-white text-violet-700" onClick={() => { setSearch(''); setCategory('All') }}>Show all songs</button>
+        </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {shown.map((s) => (

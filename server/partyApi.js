@@ -45,6 +45,7 @@ function sanitizeLibrary(list) {
       videoId: s.videoId,
       title: String(s.title || 'Untitled').slice(0, 120),
       ...(s.artist ? { artist: String(s.artist).slice(0, 100) } : {}),
+      ...(s.genre ? { genre: String(s.genre).slice(0, 60) } : {}),
     }))
 }
 
