@@ -13,21 +13,25 @@ let stream = null
 let source = null
 let shifter = null
 let analyser = null
+const listeners = new Set()
+const notify = () => listeners.forEach((f) => f())
+// subscribe to the engine turning on / off (returns an unsubscribe function)
+export const onEngineChange = (f) => { listeners.add(f); return () => listeners.delete(f) }
 
 export const isPitchEngineSupported = () =>
   !!navigator.mediaDevices?.getDisplayMedia && /Chrome|Edg/.test(navigator.userAgent)
 
 export const isPitchEngineOn = () => !!stream
 
-// compat = leave the tab's own sound on (you hear the original under the shifted copy) in case the browser
-// also silenced our re-played audio
-export async function startPitchEngine(onStopped, { compat = false } = {}) {
+// The song must play in ANOTHER tab/window (the pop-out player): if this page captured its own output the
+// shifted sound would be fed back into itself (a loud screech). The pop-out tab is muted locally while captured.
+export async function startPitchEngine(onStopped) {
   await Tone.start()
   stream = await navigator.mediaDevices.getDisplayMedia({
     video: true, // required by the API; we never display it
-    audio: { suppressLocalAudioPlayback: !compat, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    preferCurrentTab: true,
-    selfBrowserSurface: 'include',
+    audio: { suppressLocalAudioPlayback: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    preferCurrentTab: false,
+    selfBrowserSurface: 'exclude',
     systemAudio: 'exclude',
   })
   if (stream.getAudioTracks().length === 0) {
@@ -50,6 +54,7 @@ export async function startPitchEngine(onStopped, { compat = false } = {}) {
       onStopped?.()
     }),
   )
+  notify()
 }
 
 // AnalyserNode for the captured audio (null unless the key changer is on)
@@ -65,4 +70,5 @@ export function stopPitchEngine() {
   shifter?.dispose()
   analyser?.disconnect()
   stream = source = shifter = analyser = null
+  notify()
 }

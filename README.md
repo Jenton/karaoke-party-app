@@ -125,9 +125,9 @@ remove one name, or **Clear all names** in the same dialog. **⚙️ Host → �
 Browsers don't let a page process the audio of an embedded YouTube player, and YouTube's own speed
 control changes tempo. So the key changer works like this:
 
-1. Click **Turn on key changer** (Chrome or Edge on a computer).
-2. In the share dialog choose **This tab** and tick **Share tab audio**.
-3. The tab's audio is muted and played back through a Tone.js pitch shifter (−8 … +8 semitones) with the speed unchanged.
+1. Click **Turn on key changer** (Chrome or Edge on a computer). Allow pop-ups if asked: a small **Karaoke player** window opens.
+2. In the share dialog choose the **Chrome Tab** option, pick **🎤 Karaoke player** (never the main page: it would feed back with a loud screech) and tick **Also share tab audio**.
+3. The song now plays in that small window (keep it open, you can minimise it; click it once if it asks to start). Its sound is muted there and played by the main page through a Tone.js pitch shifter (−8 … +8 semitones) with the speed unchanged. The main screen shows the lyrics and visualizer as usual.
 
 Notes: this adds a small delay (~0.1–0.2 s) between video and audio.
 Turn the key changer off (or press the browser's "Stop sharing") to return to normal audio.

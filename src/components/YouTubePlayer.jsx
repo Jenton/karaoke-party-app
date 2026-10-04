@@ -2,20 +2,27 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { loadYouTubeApi } from '../lib/youtube.js'
 
 // Wraps the YouTube Iframe API. Loads `videoId` whenever it changes and calls onEnded at the end.
-const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }, ref) {
+const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed, startAt }, ref) {
   const mount = useRef(null)
   const player = useRef(null)
   const latest = useRef({ videoId, autoplay, onEnded })
-  latest.current = { videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
+  latest.current = { videoId, autoplay, startAt, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
   const loadedId = useRef(null)
   const hasStarted = useRef(null) // the video id we last asked to *play* (not just cue)
+  // resume point for the video that was already playing when this player was created (key changer switch-over)
+  const resume = useRef({ id: videoId, at: startAt || 0 })
+  const spec = (id) => {
+    const at = resume.current.id === id ? resume.current.at : 0
+    resume.current = { id: null, at: 0 }
+    return at ? { videoId: id, startSeconds: at } : id
+  }
 
   const sync = () => {
     const p = player.current
     const { videoId: id, autoplay: auto } = latest.current
     if (!p?.loadVideoById || id === loadedId.current) return
     loadedId.current = id
-    if (id) auto ? p.loadVideoById(id) : p.cueVideoById(id)
+    if (id) auto ? p.loadVideoById(spec(id)) : p.cueVideoById(spec(id))
     else p.stopVideo()
     if (id && auto) hasStarted.current = id
   }
@@ -61,7 +68,7 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
         width: '100%',
         height: '100%',
         videoId: latest.current.videoId || undefined,
-        playerVars: { playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin, autoplay: latest.current.autoplay ? 1 : 0 },
+        playerVars: { start: Math.floor(resume.current.at || 0), playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin, autoplay: latest.current.autoplay ? 1 : 0 },
         events: {
           onReady: sync,
           onStateChange: (e) => {
@@ -89,7 +96,7 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
     const id = latest.current.videoId
     if (autoplay && id && p?.loadVideoById && hasStarted.current !== id) {
       hasStarted.current = id
-      p.loadVideoById(id)
+      p.loadVideoById(spec(id))
     }
   }, [autoplay])
 

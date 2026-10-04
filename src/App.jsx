@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSharedState } from './hooks/useSharedState.js'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
+import RemoteYouTubePlayer from './components/RemoteYouTubePlayer.jsx'
+import { isPitchEngineOn, onEngineChange, stopPitchEngine } from './lib/pitch.js'
+import { closePopout } from './lib/popout.js'
 import Queue from './components/Queue.jsx'
 import LyricsOverlay from './components/LyricsOverlay.jsx'
 import LyricsPanel from './components/LyricsPanel.jsx'
@@ -78,6 +81,19 @@ export default function App() {
   const [semitones, setSemitones] = useState(0)
   const [addresses, setAddresses] = useState([])
   const player = useRef(null)
+  // key changer: the song plays in a pop-out window so its sound can be captured and shifted
+  const [popout, setPopout] = useState(false)
+  const resumeAt = useRef(0)
+  const switchPlayer = useCallback((on) => {
+    resumeAt.current = player.current?.getTime() || 0
+    setPopout(on)
+  }, [])
+  useEffect(() => onEngineChange(() => {
+    if (!isPitchEngineOn()) {
+      closePopout()
+      setPopout((was) => { if (was) resumeAt.current = player.current?.getTime() || 0; return false })
+    }
+  }), [])
   const [playing, setPlaying] = useState(false)
   const [playerError, setPlayerError] = useState(null) // YouTube error code, or null
   const [flash, setFlash] = useState(null) // brief ▶ / ⏸ shown when you click the stage
@@ -296,7 +312,11 @@ export default function App() {
       {/* the stage: video (or visualizer) with karaoke lyrics on top */}
       <main className="flex flex-col items-center gap-3 lg:flex-1 lg:min-h-0">
         <div className={`${stageWidth} relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl`}>
-          <YouTubePlayer ref={player} videoId={current?.videoId} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} onBlocked={() => setNeedsTap(true)} onApiFailed={() => setApiFailed(true)} />
+          {popout ? (
+            <RemoteYouTubePlayer key="remote" ref={player} videoId={current?.videoId} startAt={resumeAt.current} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} onClosed={stopPitchEngine} />
+          ) : (
+            <YouTubePlayer key="local" ref={player} videoId={current?.videoId} startAt={resumeAt.current} autoplay={started && !holding} onEnded={onEnded} onPlayingChange={setPlaying} onError={onPlayerError} onBlocked={() => setNeedsTap(true)} onApiFailed={() => setApiFailed(true)} />
+          )}
           {stageMode === 'visualizer' && !nativeLyrics && (
             <div className="absolute inset-0 z-[5] bg-[#1a0b2e]">
               <Visualizer playing={playing} />
@@ -456,7 +476,7 @@ export default function App() {
           )}
           {panel === 'lyrics' && <LyricsPanel lyrics={lyrics} onChange={actions.patchCurrent} />}
           <div className={panel === 'key' ? '' : 'hidden'}>
-            <PitchControls semitones={semitones} onChange={setSemitones} />
+            <PitchControls semitones={semitones} onChange={setSemitones} onPopout={switchPlayer} />
           </div>
         </aside>
         </>
