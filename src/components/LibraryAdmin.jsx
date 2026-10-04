@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { HAS_SERVER } from '../lib/env.js'
+import { ytEnabled, ytSearch, ytPlaylist } from '../lib/ytApi.js'
 import { GROUPS } from '../lib/genres.js'
 import { displayTitle, parseYouTubeId } from '../lib/youtube.js'
 import { mergeSongs, parseSongList } from '../lib/importSongs.js'
@@ -26,7 +27,7 @@ export function SignIn({ auth }) {
 
 export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = true, dbError, missingStarters = [], addStarters }) {
   const [enabled, setEnabled] = useState(null) // is a YouTube API key configured?
-  const [mode, setMode] = useState(HAS_SERVER ? 'search' : 'link')
+  const [mode, setMode] = useState('link')
   const [query, setQuery] = useState('kidz bop karaoke')
   const [playlist, setPlaylist] = useState('https://www.youtube.com/playlist?list=PL5pvzdXbuo274HniZxrytCoUs44IjLUuX') // official KIDZ BOP Karaoke playlist
   const [results, setResults] = useState([])
@@ -41,8 +42,7 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
   const [jsonMsg, setJsonMsg] = useState('')
 
   useEffect(() => {
-    if (!HAS_SERVER) return
-    fetch('/api/youtube/status').then((r) => r.json()).then((d) => setEnabled(d.enabled)).catch(() => setEnabled(false))
+    ytEnabled().then((on) => { setEnabled(on); if (on) setMode((m) => (m === 'link' ? 'search' : m)) })
   }, [])
 
   // fill in the title automatically when a link is pasted (best effort)
@@ -75,12 +75,10 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
     if (fresh.length) save([...library, ...fresh])
   }
 
-  const run = async (url) => {
+  const run = async (load) => {
     setBusy(true); setError(''); setResults([])
     try {
-      const r = await fetch(url)
-      const data = await r.json()
-      if (!r.ok) throw new Error(data.error || 'Something went wrong')
+      const data = await load()
       setResults(data)
       if (!data.length) setError('Nothing found (videos that can\'t be embedded are skipped).')
     } catch (e) {
@@ -141,29 +139,29 @@ export default function LibraryAdmin({ library, save, auth, usingDb, canEdit = t
         </button>
       )}
 
-      {HAS_SERVER ? (
+      {enabled ? (
         <div className="flex flex-wrap gap-2">{tab('search', 'YouTube search')}{tab('playlist', 'Playlist')}{tab('link', 'Paste link')}{tab('json', 'Paste list')}</div>
       ) : (
         <div className="flex flex-wrap gap-2">{tab('link', 'Paste link')}{tab('json', 'Paste list')}</div>
       )}
-      {!HAS_SERVER && (
-        !usingDb && <p className="text-sm text-slate-600">On this public page, songs you add are saved in this browser only. (YouTube search/import and sharing the list need the laptop version.)</p>
+      {!HAS_SERVER && !usingDb && (
+        <p className="text-sm text-slate-600">On this public page, songs you add are saved in this browser only. (Connect the shared database to keep and share the list.)</p>
       )}
 
-      {(mode === 'search' || mode === 'playlist') && enabled === false && (
-        <p className="text-rose-600 text-sm">
-          No YouTube API key found. Put <code>YOUTUBE_API_KEY=…</code> in a <code>.env</code> file and restart <code>npm run dev</code>. (Or use “Paste link”.)
+      {enabled === false && (
+        <p className="text-slate-600 text-sm">
+          YouTube search isn't set up yet (see the README: “YouTube API key”). You can still paste links or lists.
         </p>
       )}
 
       {mode === 'search' && (
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); run('/api/youtube/search?q=' + encodeURIComponent(query)) }}>
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); run(() => ytSearch(query)) }}>
           <input className="field" value={query} onChange={(e) => setQuery(e.target.value)} />
           <button className="big-btn !py-2 bg-pink-500 text-white" disabled={busy || !enabled}>Search</button>
         </form>
       )}
       {mode === 'playlist' && (
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); run('/api/youtube/playlist?id=' + encodeURIComponent(playlist)) }}>
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); run(() => ytPlaylist(playlist)) }}>
           <input className="field" placeholder="Playlist link or ID" value={playlist} onChange={(e) => setPlaylist(e.target.value)} />
           <button className="big-btn !py-2 bg-pink-500 text-white" disabled={busy || !enabled || !playlist.trim()}>Load</button>
         </form>

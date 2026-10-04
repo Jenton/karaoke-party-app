@@ -4,7 +4,7 @@ import { GROUPS, genreGroup } from '../lib/genres.js'
 import { hasBoth, isPlayable, resolveVersion, versionUsable, versionsOf } from '../lib/songs.js'
 import { parseYouTubeId } from '../lib/youtube.js'
 import { isBad } from '../lib/videoHealth.js'
-import { HAS_SERVER } from '../lib/env.js'
+import { ytEnabled } from '../lib/ytApi.js'
 import { findAlternatives, looksRight } from '../lib/alternatives.js'
 import VersionToggle from './VersionToggle.jsx'
 
@@ -36,6 +36,8 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     try { localStorage.setItem(PREF_KEY, v) } catch { /* ignore */ }
   }
   const effective = (s) => resolveVersion(s, overrides[s.videoId] ?? pref, health)
+  const [canSearch, setCanSearch] = useState(false) // is a YouTube API key available?
+  useEffect(() => { if (admin) ytEnabled().then(setCanSearch) }, [admin])
   const [alt, setAlt] = useState(null) // { song, kind, loading, error, results } while looking for a replacement video
   const [fixMsg, setFixMsg] = useState('')
   const [chosen, setChosen] = useState(null)
@@ -142,8 +144,8 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
           <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${health[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
             ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {health[id] === 'missing' ? 'gone' : 'blocked'}
           </span>
-          <span role="button" className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900 cursor-pointer hover:bg-sky-200" onClick={(e) => { e.stopPropagation(); HAS_SERVER ? openAlt(s, kind) : addVersion(s, kind) }}>
-            {HAS_SERVER ? '🔄 Find another' : '🔗 Paste replacement link'}
+          <span role="button" className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900 cursor-pointer hover:bg-sky-200" onClick={(e) => { e.stopPropagation(); canSearch ? openAlt(s, kind) : addVersion(s, kind) }}>
+            {canSearch ? '🔄 Find another' : '🔗 Paste replacement link'}
           </span>
         </span>
       ))}
@@ -177,7 +179,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                   : '✅ Every video can be played here'}
             </span>
             <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={onRecheck} disabled={checking}>🔍 Re-check now</button>
-            {HAS_SERVER && library.some((s) => problems(s).length) && (
+            {canSearch && library.some((s) => problems(s).length) && (
               <button className="big-btn !py-1 !px-3 !text-sm bg-sky-200 text-sky-900" onClick={autoFix}>🔄 Replace all blocked videos</button>
             )}
             {fixMsg && <span className="text-sm font-semibold">{fixMsg}</span>}

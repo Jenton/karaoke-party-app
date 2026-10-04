@@ -18,9 +18,11 @@ you just add songs by pasting links.
 Every push to `main` is built and published by `.github/workflows/pages.yml` to
 `https://jenton.github.io/karaoke-party-app/` (one-time setup: repo **Settings → Pages → Source: GitHub Actions**).
 
-The public page is static: it shows the song list from `public/library.json` plus any songs you add in the picker's manager (those are saved in that browser only), finds lyrics directly from LRCLIB, and the
-queue is saved in that browser only (no phones-add-songs, no editing the library, no YouTube API calls, so your API key is never published).
-To change the list for everyone: build it locally with the picker's manager, then `git add public/library.json`, commit and push.
+The public page is static (no server), but can do everything the laptop version does once you connect it to two services:
+- **Supabase** (below) stores the song library and the shared queue, so phones, the TV and the laptop agree from anywhere.
+- **A YouTube API key** (below) turns on YouTube search, playlist import and "Find another" on the public page.
+
+Without them it still works: the list comes from `public/library.json`, edits and the queue stay in that browser, and you can paste links to replace songs.
 
 The starter library (`public/library.json`) has 54 songs (K-Pop Demon Hunters, Disney, pop and sing-along favourites), each with a **karaoke** and an **original** video (`karaokeId` / `officialId`), plus artist and category. The "original" video for each song is an official audio or lyric-video upload where one exists (those start at 0:00 on the studio recording, so lyric timing lines up and there are no skits or dance tutorials), and the karaoke video is a karaoke-channel upload. The IDs were found by searching for each title (not by guessing), but nothing can confirm from outside a browser that every one allows embedding; the app checks that itself (see below). On the first sign-in on a device the app **replaces the whole shared library with this starter list** (a one-off reset); after that it only adds starter songs it hasn't offered yet.
 
@@ -40,10 +42,26 @@ public page shows the same list on any laptop at any location with no git push, 
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is meant to be public), then re-run the "Deploy to GitHub Pages" workflow.
 6. Open the app, hold **🔧 Manage** in the picker, and sign in with the user from step 3. When you're signed in, the app adds starter songs it hasn't offered yet on that device to the database for you (nothing to click; songs you've removed don't come back). Artists for the starter songs are filled in from the bundled list, so the the optional `alter table public.songs add column if not exists artist text;` (also `genre`, `karaoke_id`, `official_id`, see `supabase/schema.sql`) is only needed if you want artists, categories and second videos saved for songs you add yourself.
 
-After that, adding, renaming and removing songs (paste link, YouTube search, playlist import on your laptop) writes to the database.
+After that, adding, renaming and removing songs writes to the database.
 Visitors only read the list; editing needs the sign-in, which is remembered in that browser. The last list is cached, so if the
-Wi-Fi drops at the party the app still shows your songs. The queue itself still lives on the screen's laptop only.
-Do **not** put your YouTube API key or the Supabase "service_role" key in the public variables.
+Wi-Fi drops at the party the app still shows your songs.
+
+The same `schema.sql` also creates a `party_state` table that holds the **shared queue** (one row). Everyone with the page can add to it
+(that's the point: phones add songs), and anyone who knew your anon key could also clear it, which is fine for a party. Re-run the
+whole `schema.sql` if you set up Supabase before this was added (it's safe to run again, but if you get "policy already exists" for
+`songs`, run only the `party_state` part at the bottom). Never put the Supabase "service_role" key anywhere public.
+
+## YouTube API key (search, playlist import, "Find another")
+
+1. https://console.cloud.google.com → create a project → **APIs & Services → Library** → enable **YouTube Data API v3**.
+2. **APIs & Services → Credentials → Create credentials → API key**. Open the key and set:
+   - **Application restrictions → Websites** and add `https://jenton.github.io/*` and `http://localhost:*/*` (so the key only works from your pages).
+   - **API restrictions → Restrict key → YouTube Data API v3**.
+3. Public page: GitHub repo → **Settings → Secrets and variables → Actions → Variables** → add `VITE_YOUTUBE_API_KEY` with the key, then re-run the "Deploy to GitHub Pages" workflow.
+4. Laptop: put the same key in `.env` as `YOUTUBE_API_KEY=` (the local server keeps it private).
+
+The key on the public page is visible to anyone who views the page source. The restrictions above are what stop others using it; the worst case is
+someone using up your free daily quota (search costs 100 of 10,000 units, so about 100 searches a day).
 
 ## Karaoke and original versions
 

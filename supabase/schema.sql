@@ -28,3 +28,34 @@ create policy "signed-in users can delete"
 --   alter table public.songs add column if not exists genre text;
 --   alter table public.songs add column if not exists karaoke_id text;
 --   alter table public.songs add column if not exists official_id text;
+
+-- Shared party queue (so the laptop, the TV and phones on the public page all see the same queue).
+-- One row. Everyone may read and write it: it only holds the song queue, no personal data.
+create table if not exists public.party_state (
+  id         text primary key,
+  state      jsonb not null default '{}'::jsonb,
+  rev        bigint not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.party_state enable row level security;
+
+create policy "queue is readable by everyone"
+  on public.party_state for select using (true);
+create policy "queue can be added to by everyone"
+  on public.party_state for insert with check (id = 'main');
+create policy "queue can be changed by everyone"
+  on public.party_state for update using (id = 'main') with check (id = 'main');
+
+-- bump the revision on every change so every device can tell when something is new
+create or replace function public.party_state_bump() returns trigger as $$
+begin
+  new.rev := coalesce(old.rev, 0) + 1;
+  new.updated_at := now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists party_state_bump on public.party_state;
+create trigger party_state_bump before insert or update on public.party_state
+  for each row execute function public.party_state_bump();

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HAS_SERVER } from '../lib/env.js'
+import { supabase } from '../lib/supabase.js'
 
 const KEY = 'karaoke-party-state'
 const empty = { queue: [], current: null }
@@ -12,8 +13,37 @@ function loadLocal() {
   }
 }
 
-// Party state (current song + queue). The dev/preview server keeps the master copy so
-// phones and the TV see the same queue; localStorage is the fallback (e.g. static hosting).
+// How the master copy of the party state is stored: the laptop's dev/preview server, or (on the public
+// page) the shared Supabase database, so phones and the TV see the same queue from anywhere.
+// localStorage is the fallback when neither is available.
+const ROW = 'main'
+const transport = HAS_SERVER
+  ? {
+      every: 1500,
+      get: async () => {
+        const r = await fetch('/api/state')
+        if (!r.ok || !r.headers.get('content-type')?.includes('json')) throw new Error('offline')
+        return r.json()
+      },
+      send: async (s) => (await fetch('/api/state', { method: 'POST', body: JSON.stringify(s) })).json(),
+    }
+  : supabase
+    ? {
+        every: 2500,
+        get: async () => {
+          const { data, error } = await supabase.from('party_state').select('state,rev').eq('id', ROW).maybeSingle()
+          if (error) throw error
+          return data ? { rev: data.rev, ...data.state } : { rev: 0 }
+        },
+        send: async (s) => {
+          const { data, error } = await supabase.from('party_state').upsert({ id: ROW, state: s }).select('rev').single()
+          if (error) throw error
+          return { rev: data.rev }
+        },
+      }
+    : null
+
+// Party state (current song + queue).
 export function useSharedState() {
   const [state, setState] = useState(loadLocal)
   const stateRef = useRef(state)
@@ -36,8 +66,7 @@ export function useSharedState() {
     if (!online.current) return
     inFlight.current++
     try {
-      const r = await fetch('/api/state', { method: 'POST', body: JSON.stringify(s) })
-      const data = await r.json()
+      const data = await transport.send(s)
       rev.current = Math.max(rev.current, data.rev)
     } catch {
       /* try again on next change */
@@ -47,28 +76,26 @@ export function useSharedState() {
   }, [])
 
   useEffect(() => {
-    if (!HAS_SERVER) return
+    if (!transport) return
     let stop = false
     const tick = async () => {
       const requestedAt = Date.now()
       try {
-        const r = await fetch('/api/state')
-        if (!r.ok || !r.headers.get('content-type')?.includes('json')) throw new Error('offline')
-        const data = await r.json()
+        const data = await transport.get()
         online.current = true
         // skip snapshots that are older than a change we made while the request was in flight
         if (inFlight.current === 0 && data.rev !== rev.current && lastChange.current <= requestedAt) {
           const firstContact = rev.current === -1
           rev.current = data.rev
           if (firstContact && data.rev === 0) push(stateRef.current) // seed server with saved state
-          else apply({ queue: data.queue, current: data.current })
+          else apply({ queue: data.queue ?? [], current: data.current ?? null })
         }
       } catch {
         online.current = false
       }
     }
     tick()
-    const id = setInterval(() => !stop && tick(), 1500)
+    const id = setInterval(() => !stop && tick(), transport.every)
     return () => {
       stop = true
       clearInterval(id)

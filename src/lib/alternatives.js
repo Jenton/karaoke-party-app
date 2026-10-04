@@ -1,5 +1,6 @@
 // Look for another embeddable upload of a song when the current one can't be played here.
-// Needs the laptop version with a YouTube API key (the search is done by the local server).
+// Needs a YouTube API key (on the laptop in .env, or VITE_YOUTUBE_API_KEY on the public page).
+import { ytSearch } from './ytApi.js'
 const norm = (t) => (t || '').toLowerCase().replace(/[([].*?[)\]]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim()
 const artistName = (a) => (a || '').replace(/\(.*?\)/g, '').trim()
 
@@ -16,8 +17,6 @@ export function looksRight(song, kind, resultTitle) {
 }
 
 export async function findAlternatives(song, kind) {
-  const r = await fetch('/api/youtube/search?q=' + encodeURIComponent(searchQuery(song, kind)))
-  const data = await r.json()
-  if (!r.ok) throw new Error(data.error || 'Search failed')
+  const data = await ytSearch(searchQuery(song, kind))
   return data.map((v) => ({ ...v, good: looksRight(song, kind, v.title) }))
 }
