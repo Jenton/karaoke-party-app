@@ -8,10 +8,10 @@ export default function PitchControls({ semitones, onChange }) {
   useEffect(() => setSemitones(semitones), [semitones])
   useEffect(() => () => stopPitchEngine(), [])
 
-  const enable = async () => {
+  const enable = async (compat = false) => {
     setMsg('')
     try {
-      await startPitchEngine(() => setOn(false))
+      await startPitchEngine(() => setOn(false), { compat })
       setSemitones(semitones)
       setOn(true)
     } catch (e) {
@@ -21,6 +21,11 @@ export default function PitchControls({ semitones, onChange }) {
           : 'Sharing was cancelled. Click the button and choose "This tab" + "Share tab audio".',
       )
     }
+  }
+  const retryCompat = async () => {
+    stopPitchEngine()
+    setOn(false)
+    await enable(true)
   }
   const disable = () => {
     stopPitchEngine()
@@ -35,11 +40,14 @@ export default function PitchControls({ semitones, onChange }) {
         <p className="text-rose-600 font-semibold">Key changing needs Chrome or Edge on a computer.</p>
       )}
       {!on ? (
-        <button className="big-btn w-full bg-teal-500 text-white" onClick={enable} disabled={!isPitchEngineSupported()}>
+        <button className="big-btn w-full bg-teal-500 text-white" onClick={() => enable()} disabled={!isPitchEngineSupported()}>
           Turn on key changer
         </button>
       ) : (
-        <button className="big-btn w-full bg-slate-200" onClick={disable}>Turn off</button>
+        <div className="space-y-2">
+          <button className="big-btn w-full bg-slate-200" onClick={disable}>Turn off</button>
+          <button className="underline text-sm text-slate-600" onClick={retryCompat}>No sound? Try compatibility mode</button>
+        </div>
       )}
       {msg && <p className="text-rose-600">{msg}</p>}
       <div className={on ? '' : 'opacity-50 pointer-events-none'}>

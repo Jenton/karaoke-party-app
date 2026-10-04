@@ -142,11 +142,9 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
           <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900" title={`This video ${health[id] === 'missing' ? 'was removed or is private' : 'does not allow embedding'}`}>
             ⚠️ {kind === 'karaoke' ? 'karaoke' : 'original'} {health[id] === 'missing' ? 'gone' : 'blocked'}
           </span>
-          {HAS_SERVER && (
-            <span role="button" className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900 cursor-pointer hover:bg-sky-200" onClick={(e) => { e.stopPropagation(); openAlt(s, kind) }}>
-              🔄 Find another
-            </span>
-          )}
+          <span role="button" className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900 cursor-pointer hover:bg-sky-200" onClick={(e) => { e.stopPropagation(); HAS_SERVER ? openAlt(s, kind) : addVersion(s, kind) }}>
+            {HAS_SERVER ? '🔄 Find another' : '🔗 Paste replacement link'}
+          </span>
         </span>
       ))}
       {!versionsOf(s).karaoke && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'karaoke') }}>＋🎤 karaoke</span>}

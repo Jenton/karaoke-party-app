@@ -19,11 +19,13 @@ export const isPitchEngineSupported = () =>
 
 export const isPitchEngineOn = () => !!stream
 
-export async function startPitchEngine(onStopped) {
+// compat = leave the tab's own sound on (you hear the original under the shifted copy) in case the browser
+// also silenced our re-played audio
+export async function startPitchEngine(onStopped, { compat = false } = {}) {
   await Tone.start()
   stream = await navigator.mediaDevices.getDisplayMedia({
     video: true, // required by the API; we never display it
-    audio: { suppressLocalAudioPlayback: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    audio: { suppressLocalAudioPlayback: !compat, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     preferCurrentTab: true,
     selfBrowserSurface: 'include',
     systemAudio: 'exclude',
@@ -32,6 +34,7 @@ export async function startPitchEngine(onStopped) {
     stopPitchEngine()
     throw new Error('NO_AUDIO')
   }
+  await Tone.getContext().rawContext.resume?.()
   shifter = new Tone.PitchShift({ pitch: 0, windowSize: 0.1, delayTime: 0, feedback: 0 }).toDestination()
   source = Tone.getContext().rawContext.createMediaStreamSource(stream)
   Tone.connect(source, shifter)
