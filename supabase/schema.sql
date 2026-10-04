@@ -12,14 +12,18 @@ create table if not exists public.songs (
 alter table public.songs enable row level security;
 
 -- Anyone (the public page, phones) can read the list...
+drop policy if exists "songs are readable by everyone" on public.songs;
 create policy "songs are readable by everyone"
   on public.songs for select using (true);
 
 -- ...but only a signed-in grown-up can add, rename or remove songs.
+drop policy if exists "signed-in users can insert" on public.songs;
 create policy "signed-in users can insert"
   on public.songs for insert to authenticated with check (true);
+drop policy if exists "signed-in users can update" on public.songs;
 create policy "signed-in users can update"
   on public.songs for update to authenticated using (true) with check (true);
+drop policy if exists "signed-in users can delete" on public.songs;
 create policy "signed-in users can delete"
   on public.songs for delete to authenticated using (true);
 
@@ -40,10 +44,13 @@ create table if not exists public.party_state (
 
 alter table public.party_state enable row level security;
 
+drop policy if exists "queue is readable by everyone" on public.party_state;
 create policy "queue is readable by everyone"
   on public.party_state for select using (true);
+drop policy if exists "queue can be added to by everyone" on public.party_state;
 create policy "queue can be added to by everyone"
   on public.party_state for insert with check (id = 'main');
+drop policy if exists "queue can be changed by everyone" on public.party_state;
 create policy "queue can be changed by everyone"
   on public.party_state for update using (id = 'main') with check (id = 'main');
 

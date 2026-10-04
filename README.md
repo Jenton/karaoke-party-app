@@ -48,8 +48,7 @@ Wi-Fi drops at the party the app still shows your songs.
 
 The same `schema.sql` also creates a `party_state` table that holds the **shared queue** (one row). Everyone with the page can add to it
 (that's the point: phones add songs), and anyone who knew your anon key could also clear it, which is fine for a party. Re-run the
-whole `schema.sql` if you set up Supabase before this was added (it's safe to run again, but if you get "policy already exists" for
-`songs`, run only the `party_state` part at the bottom). Never put the Supabase "service_role" key anywhere public.
+whole `schema.sql` if you set up Supabase before this was added (it is safe to run again).
 
 ## YouTube API key (search, playlist import, "Find another")
 
