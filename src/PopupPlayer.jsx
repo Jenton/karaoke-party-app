@@ -8,6 +8,9 @@ export default function PopupPlayer() {
   const [needsClick, setNeedsClick] = useState(false)
   const [status, setStatus] = useState('Loading the YouTube player…')
   const [problem, setProblem] = useState('')
+  const [log, setLog] = useState([])
+  const ready = useRef(false)
+  const debug = (m) => setLog((l) => [...l.slice(-5), m])
   const player = useRef(null)
   const ch = useRef(null)
   const playing = useRef(false)
@@ -29,10 +32,12 @@ export default function PopupPlayer() {
       else if (m.type === 'forcePlay') p?.forcePlay()
     }
     c.postMessage({ type: 'hello' })
+    const mountedAt = Date.now()
     const tick = setInterval(() => {
       const p = player.current
       if (!p) return
       c.postMessage({ type: 'state', time: p.getTime(), duration: p.getDuration(), playing: playing.current })
+      if (!ready.current && Date.now() - mountedAt > 10000) setProblem("YouTube's player didn't respond. Try the reload button below.")
       // nothing started within a few seconds: the browser wants a click in this window first
       if (videoId.current && !playing.current && loadedAt.current && Date.now() - loadedAt.current > 3500) setNeedsClick(true)
     }, 500)
@@ -58,7 +63,8 @@ export default function PopupPlayer() {
           startAt={video.startAt}
           autoplay={video.autoplay}
           onEnded={() => ch.current?.postMessage({ type: 'ended' })}
-          onReady={() => setStatus('Player ready')}
+          onDebug={debug}
+          onReady={() => { ready.current = true; setStatus('Player ready') }}
           onState={(n) => setStatus(`Player: ${({ '-1': 'not started', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'ready' })[n] ?? n}`)}
           onApiFailed={() => setProblem("Couldn't load YouTube. Check the internet connection and that nothing blocks youtube.com, then close this window and turn the key changer on again.")}
           onPlayingChange={(p) => { playing.current = p; if (p) { setNeedsClick(false); setProblem('') } }}
@@ -74,6 +80,9 @@ export default function PopupPlayer() {
         </div>
       )}
       {problem && <p className="absolute inset-x-0 top-10 z-20 bg-rose-700 p-2 text-center text-sm font-semibold">{problem}</p>}
+      <div className="absolute inset-x-0 bottom-6 z-20 bg-black/70 p-1 text-center text-[10px] leading-tight opacity-80">
+        {log.join(' → ')} <button className="ml-2 underline" onClick={() => window.location.reload()}>reload this window</button>
+      </div>
       <p className="absolute inset-x-0 bottom-0 z-20 bg-black/70 p-1 text-center text-xs">
         {status} · keep this window open · its sound plays from the main screen
       </p>

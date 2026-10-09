@@ -2,11 +2,11 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { loadYouTubeApi } from '../lib/youtube.js'
 
 // Wraps the YouTube Iframe API. Loads `videoId` whenever it changes and calls onEnded at the end.
-const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed, onReady, onState, startAt }, ref) {
+const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed, onReady, onState, onDebug, startAt }, ref) {
   const mount = useRef(null)
   const player = useRef(null)
   const latest = useRef({ videoId, autoplay, onEnded })
-  latest.current = { videoId, autoplay, startAt, onReady, onState, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
+  latest.current = { videoId, autoplay, startAt, onReady, onState, onDebug, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
   const loadedId = useRef(null)
   const hasStarted = useRef(null) // the video id we last asked to *play* (not just cue)
   // resume point for the video that was already playing when this player was created (key changer switch-over)
@@ -58,9 +58,11 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
   useEffect(() => {
     let cancelled = false
     const watchdog = setTimeout(() => { if (!window.YT?.Player && !cancelled) latest.current.onApiFailed?.() }, 8000)
+    latest.current.onDebug?.('loading YouTube script')
     loadYouTubeApi().then((YT) => {
       clearTimeout(watchdog)
       if (cancelled) return
+      latest.current.onDebug?.('YouTube script ready, creating player')
       const el = document.createElement('div')
       mount.current.appendChild(el)
       loadedId.current = latest.current.videoId || null
@@ -70,14 +72,15 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
         videoId: latest.current.videoId || undefined,
         playerVars: { start: Math.floor(resume.current.at || 0), playsinline: 1, rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin, autoplay: latest.current.autoplay ? 1 : 0 },
         events: {
-          onReady: () => { sync(); latest.current.onReady?.() },
+          onReady: () => { latest.current.onDebug?.('player ready'); sync(); latest.current.onReady?.() },
           onStateChange: (e) => {
             latest.current.onState?.(e.data)
+            latest.current.onDebug?.('state ' + e.data)
             latest.current.onPlayingChange?.(e.data === YT.PlayerState.PLAYING)
             if (e.data === YT.PlayerState.ENDED) latest.current.onEnded?.()
           },
           // 2 bad id, 5 html5 error, 100 removed/private, 101/150 embedding not allowed
-          onError: (e) => latest.current.onError?.(e.data),
+          onError: (e) => { latest.current.onDebug?.('error ' + e.data); latest.current.onError?.(e.data) },
           // the browser refused to start playback by itself
           onAutoplayBlocked: () => latest.current.onBlocked?.(),
         },
