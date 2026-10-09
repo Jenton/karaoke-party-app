@@ -143,7 +143,7 @@ src/
   hooks/useSharedState.js      queue/current-song state, synced to the server + localStorage
   lib/youtube.js               URL parsing + Iframe API loader
   lib/lyrics.js                lyrics lookup (LRCLIB) + timed-lyrics parser
-  lib/pitch.js                 tab-audio capture + Tone.js PitchShift
+  lib/pitch.js                 tab-audio capture + Signalsmith Stretch pitch shifter
   hooks/useLibrary.js          curated song list
   components/                  YouTubePlayer, SongPicker, LibraryAdmin, AddSongForm, Queue, Lyrics, PitchControls, RemoteView
 ```
