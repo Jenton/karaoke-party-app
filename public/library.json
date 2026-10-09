@@ -430,5 +430,85 @@
     "genre": "KIDZ BOP",
     "karaokeId": "129TQZsNFfc",
     "officialId": null
+  },
+  {
+    "videoId": "VZ-oGLluGAc",
+    "title": "Good Luck, Babe!",
+    "artist": "Chappell Roan",
+    "genre": "Pop",
+    "karaokeId": "DjkCfplHxww",
+    "officialId": "VZ-oGLluGAc"
+  },
+  {
+    "videoId": "PPnttHlvU5k",
+    "title": "Pink Pony Club",
+    "artist": "Chappell Roan",
+    "genre": "Pop",
+    "karaokeId": "d4L7iymCVHk",
+    "officialId": "PPnttHlvU5k"
+  },
+  {
+    "videoId": "QlIrmA6aQQo",
+    "title": "Red Wine Supernova (clean)",
+    "artist": "Chappell Roan",
+    "genre": "Pop",
+    "karaokeId": "h9iOmGY0zRM",
+    "officialId": "QlIrmA6aQQo"
+  },
+  {
+    "videoId": "ELxD9nJSUkY",
+    "title": "Blank Space",
+    "artist": "Taylor Swift",
+    "genre": "Pop",
+    "karaokeId": "EuOp_2Zcr8E",
+    "officialId": "ELxD9nJSUkY"
+  },
+  {
+    "videoId": "usSuZ-lwuuY",
+    "title": "You Belong With Me",
+    "artist": "Taylor Swift",
+    "genre": "Pop",
+    "karaokeId": "7Ey8J4ZeYtM",
+    "officialId": "usSuZ-lwuuY"
+  },
+  {
+    "videoId": "olwBfJlB7x0",
+    "title": "22",
+    "artist": "Taylor Swift",
+    "genre": "Pop",
+    "karaokeId": "24GmCZgOwkk",
+    "officialId": "olwBfJlB7x0"
+  },
+  {
+    "videoId": "WXxkdkgjXbo",
+    "title": "We Are Never Ever Getting Back Together",
+    "artist": "Taylor Swift",
+    "genre": "Pop",
+    "karaokeId": "-rKBR3qfuvI",
+    "officialId": "WXxkdkgjXbo"
+  },
+  {
+    "videoId": "7nVctvQVz0U",
+    "title": "The Fate of Ophelia",
+    "artist": "Taylor Swift",
+    "genre": "Pop",
+    "karaokeId": "jCFi5irQJHA",
+    "officialId": "7nVctvQVz0U"
+  },
+  {
+    "videoId": "qeqj5GnoFUY",
+    "title": "Defying Gravity",
+    "artist": "Cynthia Erivo & Ariana Grande",
+    "genre": "Disney & Movies",
+    "karaokeId": "0NpPmuaBXZg",
+    "officialId": "qeqj5GnoFUY"
+  },
+  {
+    "videoId": "zFM8byWfhUQ",
+    "title": "Popular (Wicked film version)",
+    "artist": "Ariana Grande",
+    "genre": "Disney & Movies",
+    "karaokeId": "zFM8byWfhUQ",
+    "officialId": null
   }
 ]

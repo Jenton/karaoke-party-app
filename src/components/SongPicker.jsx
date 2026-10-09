@@ -48,7 +48,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
   // category chips: only the groups that actually have songs
   // songs whose videos are all known to be blocked or gone are hidden from kids (the manager still shows them, flagged)
   const visible = useMemo(
-    () => (admin ? library : library.filter((s) => isPlayable(s, health) && !(hideExplicit && scan[s.videoId]?.s === 'strong'))),
+    () => (admin ? library : library.filter((s) => isPlayable(s, health) && !(hideExplicit && (s.explicit || scan[s.videoId]?.s === 'strong')))),
     [library, health, admin, hideExplicit, scan],
   )
   const counts = useMemo(() => {
@@ -110,6 +110,11 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     }
     setFixMsg(`Replaced ${fixed}${failed ? `, couldn't find a good match for ${failed} (use 🔄 Find another on those)` : ''}.`)
   }
+  // curated flag (explicit: true in the library) or strong language found by the lyrics scan
+  const isExplicitSong = (s) => !!s.explicit || scan[s.videoId]?.s === 'strong'
+  const eTag = (s) => isExplicitSong(s) && (
+    <span className="shrink-0 rounded bg-slate-700 px-1.5 py-0.5 text-[11px] font-black leading-none text-white" title="Explicit lyrics" aria-label="Explicit lyrics">E</span>
+  )
   const explicitBadge = (s) => {
     const r = scan[s.videoId]
     if (!r || (r.s !== 'strong' && r.s !== 'mild')) return null
@@ -261,7 +266,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                 className="w-full flex items-center gap-3 text-left rounded-2xl bg-white shadow px-4 py-3 active:scale-[0.98] hover:bg-violet-50 transition"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block font-bold text-lg sm:text-xl leading-tight truncate">{s.title}</span>
+                  <span className="flex items-center gap-2 font-bold text-lg sm:text-xl leading-tight"><span className="truncate">{s.title}</span>{eTag(s)}</span>
                   {s.artist && <span className="block text-sm sm:text-base text-slate-500 truncate">{s.artist}</span>}
                 </span>
                 {!admin && versionControl(s)}
@@ -299,7 +304,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
               )}
             </div>
             <div className="p-3">
-              <p className="font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title}</p>
+              <p className="font-bold text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-pink-600">{s.title} {eTag(s)}</p>
               {s.artist && <p className="text-sm text-slate-500 truncate">{s.artist}</p>}
               {!admin && <div className="mt-1">{versionControl(s)}</div>}
               {!admin && onQuickAdd && (

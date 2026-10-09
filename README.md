@@ -81,6 +81,8 @@ Click the stage (video or visualizer) to pause/play; Space does the same.
 
 On screen, explicit words are always shown as **[bloop]**. The app also scans every song's lyrics in the background and, in the manager, tags songs with **🔞 explicit** (strong language) or **🔞 mild** (damn, hell...) and shows the words found. Songs with strong language are **hidden from the kids' picker** (switch this off in the manager if you like). Note the audio itself isn't edited, so for songs that are explicit I look for a radio-edit or KIDZ BOP upload, or leave the song out.
 
+Songs that are explicit also get a small dark **E** tag next to the title in the library list and grid. A song gets the tag when the lyrics scan finds strong language, or when it has `"explicit": true` in `public/library.json` (use this for songs the scan can't judge). Songs with the tag are hidden from the kids' picker while "hide songs with strong language" is on.
+
 ## Seeding more songs
 
 Three ways, from least to most effort:

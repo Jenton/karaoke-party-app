@@ -46,6 +46,7 @@ function sanitizeLibrary(list) {
       title: String(s.title || 'Untitled').slice(0, 120),
       ...(s.artist ? { artist: String(s.artist).slice(0, 100) } : {}),
       ...(s.genre ? { genre: String(s.genre).slice(0, 60) } : {}),
+      ...(s.explicit === true ? { explicit: true } : {}),
       ...(/^[\w-]{11}$/.test(s.karaokeId) ? { karaokeId: s.karaokeId } : {}),
       ...(/^[\w-]{11}$/.test(s.officialId) ? { officialId: s.officialId } : {}),
     }))

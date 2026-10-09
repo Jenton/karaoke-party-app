@@ -115,7 +115,7 @@ export function useLibrary() {
     // the bundled list first (so artists can be filled in), then the database
     const start = supabase ? loadFile().catch(() => []) : Promise.resolve([])
     start.then((list) => {
-      meta.current = new Map(list.map((s) => [s.videoId, Object.fromEntries(['artist', 'genre', 'karaokeId', 'officialId'].filter((f) => s[f]).map((f) => [f, s[f]]))]))
+      meta.current = new Map(list.map((s) => [s.videoId, Object.fromEntries(['artist', 'genre', 'karaokeId', 'officialId', 'explicit'].filter((f) => s[f]).map((f) => [f, s[f]]))]))
       setStarters(list)
       reload()
     })
