@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSharedState } from './hooks/useSharedState.js'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
 import RemoteYouTubePlayer from './components/RemoteYouTubePlayer.jsx'
-import { isPitchEngineOn, onEngineChange, stopPitchEngine } from './lib/pitch.js'
+import { getLatency, isPitchEngineOn, onEngineChange, stopPitchEngine } from './lib/pitch.js'
 import { closePopout } from './lib/popout.js'
 import Queue from './components/Queue.jsx'
 import LyricsOverlay from './components/LyricsOverlay.jsx'
@@ -167,8 +167,10 @@ export default function App() {
   }
 
   const getTime = useCallback(() => player.current?.getTime() ?? 0, [])
+  // what you HEAR is a little behind the video clock while the key changer is on; lyrics follow what you hear
+  const getLyricTime = useCallback(() => Math.max(0, getTime() - getLatency()), [getTime])
   const getDuration = useCallback(() => player.current?.getDuration() ?? 0, [])
-  const lyrics = useLyrics(isRemote ? null : current, actions.patchCurrent, { getTime, getDuration })
+  const lyrics = useLyrics(isRemote ? null : current, actions.patchCurrent, { getTime: getLyricTime, getDuration })
   const lyricsRef = useRef(lyrics)
   lyricsRef.current = lyrics
   // karaoke videos already show perfectly timed lyrics of their own: show the video and keep our overlay off it
@@ -337,7 +339,7 @@ export default function App() {
               <span className="grid h-28 w-28 place-items-center rounded-full bg-black/55 text-6xl text-white animate-flash">{flash.icon}</span>
             </div>
           )}
-          {!nativeLyrics && <LyricsOverlay lyrics={lyrics} getTime={getTime} getDuration={getDuration} />}
+          {!nativeLyrics && <LyricsOverlay lyrics={lyrics} getTime={getLyricTime} getDuration={getDuration} />}
           {holding && !playerError && (
             <div className="absolute inset-0 z-20 grid place-items-center bg-violet-900/85 text-white text-center p-6">
               <div>

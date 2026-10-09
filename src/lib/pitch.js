@@ -84,6 +84,15 @@ export async function startPitchEngine(onStopped) {
   notify()
 }
 
+// how far the sound we play is behind the video's clock (seconds): the shifter's own delay plus the output buffer.
+// 0 when the key changer is off.
+export function getLatency() {
+  if (!stretch) return 0
+  const own = Number(stretch.latency?.()) || 0
+  const out = ctx?.outputLatency || ctx?.baseLatency || 0
+  return Math.min(1, own + out)
+}
+
 // AnalyserNode for the captured audio (null unless the key changer is on)
 export const getAnalyser = () => analyser
 
