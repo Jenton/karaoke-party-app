@@ -7,7 +7,7 @@ export const openChannel = () => new BroadcastChannel(CHANNEL)
 
 // must be called straight from a click (browsers block pop-ups otherwise)
 export function openPopout() {
-  win = window.open(new URL('?player=1', window.location.href).href, 'karaoke-player', 'popup,width=520,height=360')
+  win = window.open(new URL('?player=1&t=' + Date.now(), window.location.href).href, 'karaoke-player', 'popup,width=520,height=360')
   return win
 }
 export const popoutOpen = () => !!win && !win.closed
