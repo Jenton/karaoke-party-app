@@ -1,18 +1,19 @@
 // Pitch engine.
 //
-// Browsers do not let a page tap into the audio of a cross-origin YouTube iframe,
-// so we cannot route the player straight into the Web Audio graph. Instead we ask
-// the browser to share THIS TAB's audio (getDisplayMedia), mute the tab's normal
-// output, and play the captured stream back through a Web Audio pitch shifter.
-// Result: the key changes by N semitones while the song speed stays the same.
-// Works in Chrome / Edge (desktop). Everything the tab plays (including sound
-// effects) goes through the shifter - that's expected.
-import * as Tone from 'tone'
+// Browsers do not let a page tap into the audio of a cross-origin YouTube iframe, so the song plays in a
+// separate pop-out window (see lib/popout.js). We ask the browser to share THAT tab's audio
+// (getDisplayMedia), which mutes it locally, and play the captured stream back through Signalsmith Stretch
+// (a high quality pitch shifter running as WASM in an AudioWorklet). The key changes by N semitones while
+// the song speed stays the same.
+// Works in Chrome / Edge (desktop).
+import SignalsmithStretch from 'signalsmith-stretch'
 
+let ctx = null
 let stream = null
 let source = null
-let shifter = null
+let stretch = null
 let analyser = null
+let semis = 0
 const listeners = new Set()
 const notify = () => listeners.forEach((f) => f())
 // subscribe to the engine turning on / off (returns an unsubscribe function)
@@ -23,30 +24,32 @@ export const isPitchEngineSupported = () =>
 
 export const isPitchEngineOn = () => !!stream
 
-// The song must play in ANOTHER tab/window (the pop-out player): if this page captured its own output the
-// shifted sound would be fed back into itself (a loud screech). The pop-out tab is muted locally while captured.
 export async function startPitchEngine(onStopped) {
-  await Tone.start()
-  stream = await navigator.mediaDevices.getDisplayMedia({
-    video: true, // required by the API; we never display it
-    audio: { suppressLocalAudioPlayback: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    preferCurrentTab: false,
-    selfBrowserSurface: 'exclude',
-    systemAudio: 'exclude',
-  })
-  if (stream.getAudioTracks().length === 0) {
+  ctx = new AudioContext({ latencyHint: 'interactive' })
+  await ctx.resume()
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true, // required by the API; we never display it
+      audio: { suppressLocalAudioPlayback: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      preferCurrentTab: false,
+      selfBrowserSurface: 'exclude',
+      systemAudio: 'exclude',
+    })
+    if (stream.getAudioTracks().length === 0) throw new Error('NO_AUDIO')
+    stretch = await SignalsmithStretch(ctx)
+    source = ctx.createMediaStreamSource(stream)
+    source.connect(stretch)
+    stretch.connect(ctx.destination)
+    stretch.schedule({ active: true, semitones: semis, formantCompensation: true })
+    // a side tap so the visualizer can react to the music while the key changer is on
+    analyser = ctx.createAnalyser()
+    analyser.fftSize = 128
+    analyser.smoothingTimeConstant = 0.8
+    source.connect(analyser)
+  } catch (e) {
     stopPitchEngine()
-    throw new Error('NO_AUDIO')
+    throw e
   }
-  await Tone.getContext().rawContext.resume?.()
-  shifter = new Tone.PitchShift({ pitch: 0, windowSize: 0.1, delayTime: 0, feedback: 0 }).toDestination()
-  source = Tone.getContext().rawContext.createMediaStreamSource(stream)
-  Tone.connect(source, shifter)
-  // a side tap so the visualizer can react to the music while the key changer is on
-  analyser = Tone.getContext().rawContext.createAnalyser()
-  analyser.fftSize = 128
-  analyser.smoothingTimeConstant = 0.8
-  source.connect(analyser)
   // User clicked the browser's own "Stop sharing" button
   stream.getTracks().forEach((t) =>
     t.addEventListener('ended', () => {
@@ -61,14 +64,17 @@ export async function startPitchEngine(onStopped) {
 export const getAnalyser = () => analyser
 
 export function setSemitones(n) {
-  if (shifter) shifter.pitch = n
+  semis = n
+  stretch?.schedule({ semitones: n })
 }
 
 export function stopPitchEngine() {
+  const was = !!stream
   stream?.getTracks().forEach((t) => t.stop())
   source?.disconnect()
-  shifter?.dispose()
+  stretch?.disconnect()
   analyser?.disconnect()
-  stream = source = shifter = analyser = null
-  notify()
+  ctx?.close().catch(() => {})
+  stream = source = stretch = analyser = ctx = null
+  if (was) notify()
 }

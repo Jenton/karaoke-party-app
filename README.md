@@ -127,7 +127,7 @@ control changes tempo. So the key changer works like this:
 
 1. Click **Turn on key changer** (Chrome or Edge on a computer). Allow pop-ups if asked: a small **Karaoke player** window opens.
 2. In the share dialog choose the **Chrome Tab** option, pick **🎤 Karaoke player** (never the main page: it would feed back with a loud screech) and tick **Also share tab audio**.
-3. The song now plays in that small window (keep it open, you can minimise it; click it once if it asks to start). Its sound is muted there and played by the main page through a Tone.js pitch shifter (−8 … +8 semitones) with the speed unchanged. The main screen shows the lyrics and visualizer as usual.
+3. The song now plays in that small window (keep it open, you can minimise it; click it once if it asks to start). Its sound is muted there and played by the main page through a Signalsmith Stretch pitch shifter (high quality, formant-preserving) (−8 … +8 semitones) with the speed unchanged. The main screen shows the lyrics and visualizer as usual.
 
 Notes: this adds a small delay (~0.1–0.2 s) between video and audio.
 Turn the key changer off (or press the browser's "Stop sharing") to return to normal audio.
