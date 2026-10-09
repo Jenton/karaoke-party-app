@@ -5,6 +5,7 @@ import { hasBoth, isPlayable, resolveVersion, versionUsable, versionsOf } from '
 import { parseYouTubeId } from '../lib/youtube.js'
 import { isBad } from '../lib/videoHealth.js'
 import { ytEnabled } from '../lib/ytApi.js'
+import { cachedInfo, fetchInfo, titleProblem } from '../lib/videoTitles.js'
 import { findAlternatives, looksRight } from '../lib/alternatives.js'
 import VersionToggle from './VersionToggle.jsx'
 
@@ -40,6 +41,22 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
   useEffect(() => { if (admin) ytEnabled().then(setCanSearch) }, [admin])
   const [alt, setAlt] = useState(null) // { song, kind, loading, error, results } while looking for a replacement video
   const [fixMsg, setFixMsg] = useState('')
+  // "does each video match its song?": real titles from YouTube compared with the library
+  const [info, setInfo] = useState(cachedInfo)
+  const [titleCheck, setTitleCheck] = useState(null) // { done, total } while running
+  const [titleChecked, setTitleChecked] = useState(false)
+  const runTitleCheck = async () => {
+    const ids = library.flatMap((s) => [versionsOf(s).karaoke, versionsOf(s).official]).filter(Boolean)
+    setTitleCheck({ done: 0, total: ids.length })
+    setInfo(await fetchInfo(ids, (done, total) => setTitleCheck({ done, total }), { force: true }))
+    setTitleCheck(null)
+    setTitleChecked(true)
+  }
+  const titleProblems = (s) =>
+    [['karaoke', versionsOf(s).karaoke], ['official', versionsOf(s).official]]
+      .filter(([, id]) => id && info[id])
+      .map(([kind, id]) => [kind, id, titleProblem(s, kind, info[id])])
+      .filter(([, , why]) => why)
   const [chosen, setChosen] = useState(null)
   const [singer, setSinger] = useState('')
   const [singers, setSingers] = useState(getSingers)
@@ -101,7 +118,7 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
     setFixMsg('Looking for replacements…')
     for (const s of library) {
       for (const [kind, id] of [['karaoke', versionsOf(s).karaoke], ['official', versionsOf(s).official]]) {
-        if (!id || !isBad(health[id])) continue
+        if (!id || !(isBad(health[id]) || (info[id] && titleProblem(s, kind, info[id])))) continue
         try {
           const found = (await findAlternatives(s, kind)).find((r) => r.good && r.videoId !== id)
           if (found) { onSetVersion?.(s, kind, found.videoId); fixed++ } else failed++
@@ -154,6 +171,16 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
           </span>
         </span>
       ))}
+      {titleProblems(s).map(([kind, id, why]) => (
+        <span key={'t' + kind} className="inline-flex items-center gap-1">
+          <span className="rounded-full bg-orange-200 px-2 py-0.5 text-xs font-bold text-orange-900" title={`${kind === 'karaoke' ? 'Karaoke' : 'Original'} video is "${info[id].title}" by ${info[id].author}: ${why}`}>
+            🔎 {kind === 'karaoke' ? 'karaoke' : 'original'} may be wrong: “{info[id].title.slice(0, 40)}”
+          </span>
+          <span role="button" className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900 cursor-pointer hover:bg-sky-200" onClick={(e) => { e.stopPropagation(); canSearch ? openAlt(s, kind) : addVersion(s, kind) }}>
+            {canSearch ? '🔄 Find another' : '🔗 Paste replacement link'}
+          </span>
+        </span>
+      ))}
       {!versionsOf(s).karaoke && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'karaoke') }}>＋🎤 karaoke</span>}
       {!versionsOf(s).official && <span role="button" className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold cursor-pointer hover:bg-violet-200" onClick={(e) => { e.stopPropagation(); addVersion(s, 'official') }}>＋🎬 original</span>}
       <span role="button" aria-label={`Rename ${s.title}`} className="w-10 h-10 grid place-items-center rounded-full bg-violet-200 text-xl cursor-pointer hover:bg-violet-300" onClick={(e) => { e.stopPropagation(); rename(s) }}>✏️</span>
@@ -184,6 +211,16 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                   : '✅ Every video can be played here'}
             </span>
             <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={onRecheck} disabled={checking}>🔍 Re-check now</button>
+            <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={runTitleCheck} disabled={!!titleCheck}>
+              {titleCheck ? `Checking titles… ${titleCheck.done}/${titleCheck.total}` : '🔎 Check that videos match their songs'}
+            </button>
+            {titleChecked && !titleCheck && (
+              <span className="text-sm font-semibold">
+                {library.filter((s) => titleProblems(s).length).length
+                  ? `🔎 ${library.filter((s) => titleProblems(s).length).length} song(s) have a video that may be the wrong one (flagged below).`
+                  : '✅ Every video title matches its song'}
+              </span>
+            )}
             {canSearch && library.some((s) => problems(s).length) && (
               <button className="big-btn !py-1 !px-3 !text-sm bg-sky-200 text-sky-900" onClick={autoFix}>🔄 Replace all blocked videos</button>
             )}

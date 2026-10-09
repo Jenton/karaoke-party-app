@@ -77,6 +77,8 @@ Each song can have both a karaoke video and the original. They are **one entry**
 
 Click the stage (video or visualizer) to pause/play; Space does the same.
 
+In the manager, **🔎 Check that videos match their songs** asks YouTube for each video's real title and channel (from your browser, nothing is stored on a server) and flags ones that look wrong: another song, a cover, remix or live version where the original should be, or a non-karaoke video in the karaoke slot. The flagged song shows the real title, with **Find another** (or a paste-a-link button). **Replace all blocked videos** also swaps these.
+
 ## Explicit lyrics
 
 On screen, explicit words are always shown as **[bloop]**. The app also scans every song's lyrics in the background and, in the manager, tags songs with **🔞 explicit** (strong language) or **🔞 mild** (damn, hell...) and shows the words found. Songs with strong language are **hidden from the kids' picker** (switch this off in the manager if you like). Note the audio itself isn't edited, so for songs that are explicit I look for a radio-edit or KIDZ BOP upload, or leave the song out.
