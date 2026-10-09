@@ -510,5 +510,61 @@
     "genre": "Disney & Movies",
     "karaokeId": "zFM8byWfhUQ",
     "officialId": null
+  },
+  {
+    "videoId": "73ouhDibImA",
+    "title": "Sucker",
+    "artist": "Jonas Brothers",
+    "genre": "Pop",
+    "karaokeId": "xZCLLVYq3O8",
+    "officialId": "73ouhDibImA"
+  },
+  {
+    "videoId": "TJLAJWSEd6U",
+    "title": "Dancing Queen",
+    "artist": "ABBA",
+    "genre": "Sing-alongs",
+    "karaokeId": "WHayJZ3eMcE",
+    "officialId": "TJLAJWSEd6U"
+  },
+  {
+    "videoId": "4F_RCWVoL4s",
+    "title": "Sweet Caroline",
+    "artist": "Neil Diamond",
+    "genre": "Sing-alongs",
+    "karaokeId": "srLoAl1mhFw",
+    "officialId": "4F_RCWVoL4s"
+  },
+  {
+    "videoId": "2ognf_oRQWM",
+    "title": "Livin' on a Prayer",
+    "artist": "Bon Jovi",
+    "genre": "Sing-alongs",
+    "karaokeId": "Ep6G3P2v5ZA",
+    "officialId": "2ognf_oRQWM"
+  },
+  {
+    "videoId": "wwux9KiBMjE",
+    "title": "I'm Just Ken",
+    "artist": "Ryan Gosling",
+    "genre": "Disney & Movies",
+    "karaokeId": "B7OpLSunE_w",
+    "officialId": "wwux9KiBMjE"
+  },
+  {
+    "videoId": "-3Gd2MGuGHw",
+    "title": "Shiny",
+    "artist": "Jemaine Clement",
+    "genre": "Disney & Movies",
+    "karaokeId": "RY8MVJzBA7k",
+    "officialId": "-3Gd2MGuGHw"
+  },
+  {
+    "videoId": "len7eibsxmw",
+    "title": "Best Day of My Life",
+    "artist": "American Authors",
+    "genre": "Feel-good",
+    "karaokeId": "len7eibsxmw",
+    "officialId": null
   }
 ]
