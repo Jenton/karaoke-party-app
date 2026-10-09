@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { isPitchEngineOn, isPitchEngineSupported, onEngineChange, startPitchEngine, stopPitchEngine, setSemitones } from '../lib/pitch.js'
+import { QUALITY, getQuality, setQuality, isPitchEngineOn, isPitchEngineSupported, onEngineChange, startPitchEngine, stopPitchEngine, setSemitones } from '../lib/pitch.js'
 import { closePopout, openPopout } from '../lib/popout.js'
 
 export default function PitchControls({ semitones, onChange, onPopout }) {
   const [on, setOn] = useState(false)
   const [msg, setMsg] = useState('')
+  const [quality, setQ] = useState(getQuality)
 
   useEffect(() => setSemitones(semitones), [semitones])
   useEffect(() => () => stopPitchEngine(), [])
@@ -62,6 +63,15 @@ export default function PitchControls({ semitones, onChange, onPopout }) {
           <button className="big-btn bg-slate-200" onClick={() => set(0)}>Reset</button>
           <button className="big-btn bg-pink-400 text-white" onClick={() => set(semitones + 1)}>⬆️ Higher</button>
         </div>
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-slate-600">Sound quality</p>
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(QUALITY).map(([id, q]) => (
+            <button key={id} className={`rounded-xl px-2 py-2 text-sm font-bold ${quality === id ? 'bg-teal-500 text-white' : 'bg-slate-100'}`} onClick={() => { setQuality(id); setQ(id) }}>{q.label}</button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">{QUALITY[quality].hint || 'a good all-rounder'}. Try each while a song plays and keep the one that sounds best.</p>
       </div>
       <p className="text-sm text-slate-500">
         Speed stays the same. A small <b>Karaoke player</b> window opens. When Chrome asks what to share, pick the <b>Chrome Tab</b> option, choose <b>🎤 Karaoke player</b> (not this page!) and tick <b>Also share tab audio</b>. Keep that window open.
