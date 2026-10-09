@@ -2,11 +2,11 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { loadYouTubeApi } from '../lib/youtube.js'
 
 // Wraps the YouTube Iframe API. Loads `videoId` whenever it changes and calls onEnded at the end.
-const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed, onReady, startAt }, ref) {
+const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onEnded, onPlayingChange, onError, onBlocked, onApiFailed, onReady, onState, startAt }, ref) {
   const mount = useRef(null)
   const player = useRef(null)
   const latest = useRef({ videoId, autoplay, onEnded })
-  latest.current = { videoId, autoplay, startAt, onReady, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
+  latest.current = { videoId, autoplay, startAt, onReady, onState, onEnded, onPlayingChange, onError, onBlocked, onApiFailed }
   const loadedId = useRef(null)
   const hasStarted = useRef(null) // the video id we last asked to *play* (not just cue)
   // resume point for the video that was already playing when this player was created (key changer switch-over)
@@ -72,6 +72,7 @@ const YouTubePlayer = forwardRef(function YouTubePlayer({ videoId, autoplay, onE
         events: {
           onReady: () => { sync(); latest.current.onReady?.() },
           onStateChange: (e) => {
+            latest.current.onState?.(e.data)
             latest.current.onPlayingChange?.(e.data === YT.PlayerState.PLAYING)
             if (e.data === YT.PlayerState.ENDED) latest.current.onEnded?.()
           },

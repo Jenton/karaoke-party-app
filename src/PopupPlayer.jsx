@@ -59,18 +59,21 @@ export default function PopupPlayer() {
           autoplay={video.autoplay}
           onEnded={() => ch.current?.postMessage({ type: 'ended' })}
           onReady={() => setStatus('Player ready')}
+          onState={(n) => setStatus(`Player: ${({ '-1': 'not started', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'ready' })[n] ?? n}`)}
           onApiFailed={() => setProblem("Couldn't load YouTube. Check the internet connection and that nothing blocks youtube.com, then close this window and turn the key changer on again.")}
-          onPlayingChange={(p) => { playing.current = p; if (p) { setNeedsClick(false); setProblem(''); setStatus('Playing') } }}
+          onPlayingChange={(p) => { playing.current = p; if (p) { setNeedsClick(false); setProblem('') } }}
           onError={(code) => { setNeedsClick(false); setProblem(`YouTube can't play this video here (${errorText(code)}). The main screen will try the other version.`); ch.current?.postMessage({ type: 'error', code }) }}
           onBlocked={() => setNeedsClick(true)}
         />
       </div>
       {needsClick && (
-        <button onClick={start} className="absolute inset-0 z-10 grid place-items-center bg-black/80 text-3xl font-bold">
-          ▶️ Click here to start the song
-        </button>
+        <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-center gap-3 bg-violet-700 p-2 text-sm font-semibold">
+          <span>Nothing playing yet.</span>
+          <button onClick={start} className="rounded-lg bg-white px-3 py-1 font-bold text-violet-800">▶️ Start the song</button>
+          <span className="hidden sm:inline">or click the video's own ▶ button</span>
+        </div>
       )}
-      {problem && <p className="absolute inset-x-0 top-0 z-20 bg-rose-700 p-2 text-center text-sm font-semibold">{problem}</p>}
+      {problem && <p className="absolute inset-x-0 top-10 z-20 bg-rose-700 p-2 text-center text-sm font-semibold">{problem}</p>}
       <p className="absolute inset-x-0 bottom-0 z-20 bg-black/70 p-1 text-center text-xs">
         {status} · keep this window open · its sound plays from the main screen
       </p>
