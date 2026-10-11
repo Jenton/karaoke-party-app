@@ -10,6 +10,7 @@ export default {
         wiggle: { '0%,100%': { transform: 'rotate(-3deg)' }, '50%': { transform: 'rotate(3deg)' } },
         float: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
         pop: { '0%': { transform: 'scale(.8)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
+        sheetUp: { '0%': { transform: 'translateY(40%)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
         flash: { '0%': { transform: 'scale(.7)', opacity: 0 }, '25%': { transform: 'scale(1)', opacity: 1 }, '100%': { transform: 'scale(1.15)', opacity: 0 } },
       },
       animation: {
@@ -17,6 +18,7 @@ export default {
         float: 'float 3s ease-in-out infinite',
         pop: 'pop .25s ease-out',
         flash: 'flash .7s ease-out forwards',
+        sheetUp: 'sheetUp .28s ease-out',
       },
     },
   },

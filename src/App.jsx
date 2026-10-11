@@ -33,6 +33,9 @@ export default function App() {
   const [started, setStarted] = useState(false)
   const [panel, setPanel] = useState(null) // 'queue' | 'key' | 'lyrics' | null
   const [picking, setPicking] = useState(false)
+  // while someone is singing the picker slides up from the bottom and the stage shrinks above it, so the lyrics stay visible
+  const [sheetSize, setSheetSizeState] = useState(() => { try { return localStorage.getItem('karaoke-sheet-size') || 'medium' } catch { return 'medium' } })
+  const setSheetSize = (v) => { setSheetSizeState(v); try { localStorage.setItem('karaoke-sheet-size', v) } catch { /* ignore */ } }
   const [adminMode, setAdminMode] = useState(false) // host-only: lets you remove songs from the picker
   const [menu, setMenu] = useState(false) // host menu
   const [toast, setToast] = useState(null)
@@ -271,10 +274,39 @@ export default function App() {
     </button>
   )
 
-  const stageWidth = 'w-full lg:w-[min(100%,calc((100vh-14rem)*1.7778))]'
+
+  const pickerEl = (
+    <SongPicker
+      library={library}
+      queuedIds={[current, ...queue].filter(Boolean).map((s) => s.libId ?? s.videoId)}
+      onPick={actions.addFromLibrary}
+      onQuickAdd={actions.quickAdd}
+      admin={adminMode}
+      canEdit={canEdit}
+      onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
+      onRename={(song, title) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, title } : x)))}
+      onSetVersion={(song, kind, id) => patchSong(song.videoId, kind === 'karaoke' ? { karaokeId: id } : { officialId: id })}
+      health={health}
+      checking={checkingVideos}
+      onRecheck={recheck}
+      scan={scan}
+      scanning={scanning}
+      onRescan={rescan}
+      hideExplicit={hideExplicit}
+      onHideExplicit={setHideExplicit}
+      dbError={libraryError}
+    />
+  )
+
+  const sheetMode = picking && !adminMode && !!current && sheetSize !== 'full'
+  const sheetVh = sheetSize === 'small' ? '35vh' : '50vh'
+  const stageWidth = 'w-full lg:w-[min(100%,calc((100vh-var(--sheet)-14rem)*1.7778))]'
 
   return (
-    <div className="flex flex-col p-3 sm:p-4 gap-3 lg:h-screen lg:overflow-hidden">
+    <div
+      className="flex flex-col p-3 sm:p-4 gap-3 pb-[calc(var(--sheet)+0.75rem)] sm:pb-[calc(var(--sheet)+1rem)] lg:pb-4 lg:h-[calc(100vh-var(--sheet))] lg:overflow-hidden transition-[height,padding] duration-300"
+      style={{ '--sheet': sheetMode ? sheetVh : '0px' }}
+    >
       {/* slim toolbar: everything except the stage is a secondary control */}
       <header className="relative flex items-center gap-2 shrink-0">
         <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow mr-auto">🎤 Karaoke Party</h1>
@@ -490,7 +522,27 @@ export default function App() {
         </div>
       )}
 
-      {picking && (
+      {picking && sheetMode && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-3xl bg-gradient-to-br from-violet-600 via-pink-600 to-orange-500 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] animate-sheetUp"
+          style={{ height: sheetVh }}
+        >
+          <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+            <span className="mx-auto absolute left-1/2 top-1.5 h-1.5 w-12 -translate-x-1/2 rounded-full bg-white/60" aria-hidden />
+            <h2 className="text-2xl sm:text-3xl font-bold text-white drop-shadow mr-auto">🎵 Pick a song!</h2>
+            <div className="flex overflow-hidden rounded-xl bg-white/90 text-sm font-bold text-violet-800" role="group" aria-label="Library size">
+              {[['small', '▁ Small'], ['medium', '▃ Medium'], ['full', '▇ Full screen']].map(([id, label]) => (
+                <button key={id} className={`px-3 py-2 ${sheetSize === id ? 'bg-violet-600 text-white' : 'hover:bg-violet-100'}`} onClick={() => setSheetSize(id)}>{label}</button>
+              ))}
+            </div>
+            <HoldButton onHold={openManager} label="🔧 Manage" hint="Hold to add or remove songs (host)" />
+            <button className="big-btn !text-xl !py-2 bg-white text-violet-700" onClick={() => setPicking(false)}>✖ Close</button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-4">{pickerEl}</div>
+        </div>
+      )}
+
+      {picking && !sheetMode && (
         <div className="fixed inset-0 z-40 overflow-y-auto bg-gradient-to-br from-violet-600 via-pink-600 to-orange-500 p-4 sm:p-8">
           <div className="max-w-[1400px] mx-auto">
             <div className="flex items-center gap-3 mb-4">
@@ -500,6 +552,9 @@ export default function App() {
               ) : (
                 <HoldButton onHold={openManager} label="🔧 Manage" hint="Hold to add or remove songs (host)" />
               )}
+              {current && !adminMode && (
+                <button className="big-btn !text-xl bg-white/90 text-violet-700" onClick={() => setSheetSize('medium')} title="Show the library as a panel under the lyrics">▃ Shrink to panel</button>
+              )}
               <button className="big-btn !text-2xl bg-white text-violet-700" onClick={() => { setPicking(false); setAdminMode(false) }}>✖ Close</button>
             </div>
             {adminMode && (
@@ -507,26 +562,7 @@ export default function App() {
                 <LibraryAdmin library={library} save={saveLibrary} auth={auth} usingDb={usingDb} canEdit={canEdit} dbError={libraryError} missingStarters={missingStarters} addStarters={addStarters} />
               </div>
             )}
-            <SongPicker
-              library={library}
-              queuedIds={[current, ...queue].filter(Boolean).map((s) => s.libId ?? s.videoId)}
-              onPick={actions.addFromLibrary}
-              onQuickAdd={actions.quickAdd}
-              admin={adminMode}
-              canEdit={canEdit}
-              onRemove={(song) => saveLibrary(library.filter((x) => x.videoId !== song.videoId))}
-              onRename={(song, title) => saveLibrary(library.map((x) => (x.videoId === song.videoId ? { ...x, title } : x)))}
-              onSetVersion={(song, kind, id) => patchSong(song.videoId, kind === 'karaoke' ? { karaokeId: id } : { officialId: id })}
-              health={health}
-              checking={checkingVideos}
-              onRecheck={recheck}
-              scan={scan}
-              scanning={scanning}
-              onRescan={rescan}
-              hideExplicit={hideExplicit}
-              onHideExplicit={setHideExplicit}
-              dbError={libraryError}
-            />
+            {pickerEl}
           </div>
         </div>
       )}
