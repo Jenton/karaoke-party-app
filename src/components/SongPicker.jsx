@@ -211,6 +211,15 @@ export default function SongPicker({ library, onPick, onQuickAdd, queuedIds = []
                   : '✅ Every video can be played here'}
             </span>
             <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={onRecheck} disabled={checking}>🔍 Re-check now</button>
+            <button
+              className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800"
+              onClick={async () => {
+                const text = JSON.stringify(library, null, 2)
+                try { await navigator.clipboard.writeText(text); setFixMsg(`Copied ${library.length} songs as JSON. Paste it wherever you need it.`) } catch { window.prompt('Copy the library JSON:', text) }
+              }}
+            >
+              📋 Copy library as JSON
+            </button>
             <button className="big-btn !py-1 !px-3 !text-sm bg-white text-rose-800" onClick={runTitleCheck} disabled={!!titleCheck}>
               {titleCheck ? `Checking titles… ${titleCheck.done}/${titleCheck.total}` : '🔎 Check that videos match their songs'}
             </button>
